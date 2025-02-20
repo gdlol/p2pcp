@@ -6,8 +6,8 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/host"
 
-	"github.com/dennis-tra/pcp/internal/log"
-	"github.com/dennis-tra/pcp/internal/wrap"
+	"p2pcp/internal/log"
+	"p2pcp/internal/wrap"
 )
 
 var (

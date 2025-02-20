@@ -12,8 +12,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/schollz/pake/v2"
 
-	"github.com/dennis-tra/pcp/internal/log"
-	"github.com/dennis-tra/pcp/pkg/crypt"
+	"p2pcp/internal/log"
+	"p2pcp/pkg/crypt"
 )
 
 // pattern: /protocol-name/request-or-response-message/version

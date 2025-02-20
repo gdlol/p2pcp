@@ -1,4 +1,4 @@
-module github.com/dennis-tra/pcp
+module p2pcp
 
 go 1.15
 

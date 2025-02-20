@@ -7,8 +7,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/dennis-tra/pcp/internal/log"
-	p2p "github.com/dennis-tra/pcp/pkg/pb"
+	"p2pcp/internal/log"
+	p2p "p2pcp/pkg/pb"
 )
 
 // pattern: /protocol-name/request-or-response-message/version

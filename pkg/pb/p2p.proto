@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "github.com/dennis-tra/pcp/pkg/proto";
+option go_package = "p2pcp/pkg/proto";
 
 // A message object that is shared among all requests.
 message Header {

@@ -22,11 +22,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	"github.com/dennis-tra/pcp/internal/log"
-	"github.com/dennis-tra/pcp/pkg/crypt"
-	p2p "github.com/dennis-tra/pcp/pkg/pb"
-	"github.com/dennis-tra/pcp/pkg/service"
-	"github.com/dennis-tra/pcp/pkg/words"
+	"p2pcp/internal/log"
+	"p2pcp/pkg/crypt"
+	p2p "p2pcp/pkg/pb"
+	"p2pcp/pkg/service"
+	"p2pcp/pkg/words"
 )
 
 // Is set to true during test runs because the

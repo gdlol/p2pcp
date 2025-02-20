@@ -10,8 +10,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
 
-	"github.com/dennis-tra/pcp/internal/wrap"
-	"github.com/dennis-tra/pcp/pkg/service"
+	"p2pcp/internal/wrap"
+	"p2pcp/pkg/service"
 )
 
 // These wrapped top level functions are here for testing purposes.

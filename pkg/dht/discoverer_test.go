@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/dennis-tra/pcp/internal/mock"
+	"p2pcp/internal/mock"
 )
 
 func TestDiscoverer_Discover_happyPath(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/dennis-tra/pcp/internal/mock"
-	"github.com/dennis-tra/pcp/internal/wrap"
+	"p2pcp/internal/mock"
+	"p2pcp/internal/wrap"
 )
 
 func setup(t *testing.T) *gomock.Controller {

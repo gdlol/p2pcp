@@ -5,12 +5,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dennis-tra/pcp/pkg/words"
+	"p2pcp/pkg/words"
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/dennis-tra/pcp/internal/log"
-	"github.com/dennis-tra/pcp/pkg/config"
+	"p2pcp/internal/log"
+	"p2pcp/pkg/config"
 )
 
 // Command holds the `send` subcommand configuration.

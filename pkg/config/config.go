@@ -9,7 +9,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/dennis-tra/pcp/internal/wrap"
+	"p2pcp/internal/wrap"
 )
 
 const (

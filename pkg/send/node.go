@@ -12,10 +12,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	"github.com/dennis-tra/pcp/internal/log"
-	"github.com/dennis-tra/pcp/pkg/dht"
-	"github.com/dennis-tra/pcp/pkg/mdns"
-	pcpnode "github.com/dennis-tra/pcp/pkg/node"
+	"p2pcp/internal/log"
+	"p2pcp/pkg/dht"
+	"p2pcp/pkg/mdns"
+	pcpnode "p2pcp/pkg/node"
 )
 
 // Node encapsulates the logic of advertising and transmitting

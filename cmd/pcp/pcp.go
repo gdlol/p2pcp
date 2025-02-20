@@ -9,9 +9,9 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/dennis-tra/pcp/internal/log"
-	"github.com/dennis-tra/pcp/pkg/receive"
-	"github.com/dennis-tra/pcp/pkg/send"
+	"p2pcp/internal/log"
+	"p2pcp/pkg/receive"
+	"p2pcp/pkg/send"
 )
 
 var (

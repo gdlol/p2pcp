@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/dennis-tra/pcp/pkg/crypt"
-	"github.com/dennis-tra/pcp/pkg/service"
+	"p2pcp/pkg/crypt"
+	"p2pcp/pkg/service"
 )
 
 // TestTransferHandler is a mock transfer handler that can be registered for the TransferProtocol.

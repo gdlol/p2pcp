@@ -8,9 +8,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	"github.com/dennis-tra/pcp/internal/log"
-	"github.com/dennis-tra/pcp/pkg/config"
-	p2p "github.com/dennis-tra/pcp/pkg/pb"
+	"p2pcp/internal/log"
+	"p2pcp/pkg/config"
+	p2p "p2pcp/pkg/pb"
 )
 
 // Command contains the receive sub-command configuration.

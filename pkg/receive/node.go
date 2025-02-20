@@ -8,12 +8,13 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/dennis-tra/pcp/internal/format"
-	"github.com/dennis-tra/pcp/internal/log"
-	"github.com/dennis-tra/pcp/pkg/dht"
-	"github.com/dennis-tra/pcp/pkg/mdns"
-	pcpnode "github.com/dennis-tra/pcp/pkg/node"
-	p2p "github.com/dennis-tra/pcp/pkg/pb"
+	"p2pcp/internal/format"
+	"p2pcp/internal/log"
+	"p2pcp/pkg/dht"
+	"p2pcp/pkg/mdns"
+	pcpnode "p2pcp/pkg/node"
+	p2p "p2pcp/pkg/pb"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 )

@@ -3,7 +3,7 @@ package mdns
 import (
 	"context"
 
-	"github.com/dennis-tra/pcp/internal/log"
+	"p2pcp/internal/log"
 
 	"github.com/libp2p/go-libp2p-core/host"
 )

@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/dennis-tra/pcp/internal/mock"
-	"github.com/dennis-tra/pcp/pkg/service"
+	"p2pcp/internal/mock"
+	"p2pcp/pkg/service"
 )
 
 func TestAdvertiser_Advertise(t *testing.T) {

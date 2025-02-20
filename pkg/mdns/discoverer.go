@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/whyrusleeping/mdns"
 
-	"github.com/dennis-tra/pcp/internal/log"
+	"p2pcp/internal/log"
 )
 
 type Discoverer struct {

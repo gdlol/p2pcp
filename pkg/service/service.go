@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/dennis-tra/pcp/internal/log"
+	"p2pcp/internal/log"
 )
 
 // State represents the lifecycle states of a service.

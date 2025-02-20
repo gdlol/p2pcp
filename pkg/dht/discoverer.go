@@ -9,8 +9,8 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 
-	"github.com/dennis-tra/pcp/internal/log"
-	"github.com/dennis-tra/pcp/internal/wrap"
+	"p2pcp/internal/log"
+	"p2pcp/internal/wrap"
 )
 
 // Discoverer is responsible for reading the DHT for an
