@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	"p2pcp/internal/log"
+	"log/slog"
 	"p2pcp/pkg/dht"
 	"p2pcp/pkg/mdns"
 	pcpnode "p2pcp/pkg/node"
@@ -97,7 +97,7 @@ func (n *Node) StartAdvertising(c *cli.Context) {
 			case dht.ErrConnThresholdNotReached:
 				e.Log()
 			default:
-				log.Warningln(err)
+				slog.Warn("advertising error", "error", err)
 			}
 		}(advertiser)
 	}
@@ -118,7 +118,7 @@ func (n *Node) StopAdvertising() {
 func (n *Node) HandleSuccessfulKeyExchange(peerID peer.ID) {
 	// We're authenticated so can initiate a transfer
 	if n.GetState() == pcpnode.Connected {
-		log.Debugln("already connected and authenticated with another node")
+		slog.Debug("already connected and authenticated with another node")
 		return
 	}
 	n.SetState(pcpnode.Connected)
@@ -128,7 +128,7 @@ func (n *Node) HandleSuccessfulKeyExchange(peerID peer.ID) {
 
 	err := n.Transfer(peerID)
 	if err != nil {
-		log.Warningln("Error transferring file:", err)
+		slog.Warn("error transferring file", "error", err)
 	}
 
 	n.Shutdown()
@@ -141,23 +141,23 @@ func (n *Node) Transfer(peerID peer.ID) error {
 		return err
 	}
 
-	log.Infof("Asking for confirmation... ")
+	slog.Info("asking for confirmation...")
 	accepted, err := n.SendPushRequest(n.ServiceContext(), peerID, filename, size, false)
 	if err != nil {
 		return err
 	}
 
 	if !accepted {
-		log.Infoln("Rejected!")
+		slog.Info("rejected!")
 		return fmt.Errorf("rejected file transfer")
 	}
-	log.Infoln("Accepted!")
+	slog.Info("accepted!")
 
 	if err = n.Node.Transfer(n.ServiceContext(), peerID, n.filepath); err != nil {
 		return errors.Wrap(err, "could not transfer file to peer")
 	}
 
-	log.Infoln("Successfully sent file/directory!")
+	slog.Info("successfully sent file/directory!")
 	return nil
 }
 

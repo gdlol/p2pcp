@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/elliptic"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/schollz/pake/v2"
 
-	"p2pcp/internal/log"
 	"p2pcp/pkg/crypt"
 )
 
@@ -59,7 +59,7 @@ func NewPakeProtocol(node *Node, words []string) (*PakeProtocol, error) {
 // obtained via the password authenticated peer exchange (PAKE) to
 // a local peer store.
 func (p *PakeProtocol) AddAuthenticatedPeer(peerID peer.ID, key []byte) {
-	log.Debugf("Adding authenticated peer %s to known peers\n", peerID)
+	slog.Debug(fmt.Sprintf("Adding authenticated peer %s to known peers\n", peerID))
 	p.authedPeers.Store(peerID, key)
 }
 
@@ -67,7 +67,7 @@ func (p *PakeProtocol) AddAuthenticatedPeer(peerID peer.ID, key []byte) {
 // passed a password authenticated key exchange.
 func (p *PakeProtocol) IsAuthenticated(peerID peer.ID) bool {
 	_, found := p.authedPeers.Load(peerID)
-	log.Debugf("Is peer %s authenticated: %v\n", peerID, found)
+	slog.Debug(fmt.Sprintf("Is peer %s authenticated: %v\n", peerID, found))
 	return found
 }
 
@@ -91,7 +91,7 @@ type KeyExchangeHandler interface {
 }
 
 func (p *PakeProtocol) RegisterKeyExchangeHandler(keh KeyExchangeHandler) {
-	log.Debugln("Registering key exchange handler")
+	slog.Debug("Registering key exchange handler")
 	p.lk.Lock()
 	defer p.lk.Unlock()
 	p.keh = keh
@@ -99,7 +99,7 @@ func (p *PakeProtocol) RegisterKeyExchangeHandler(keh KeyExchangeHandler) {
 }
 
 func (p *PakeProtocol) UnregisterKeyExchangeHandler() {
-	log.Debugln("Unregistering key exchange handler")
+	slog.Debug("Unregistering key exchange handler")
 	p.lk.Lock()
 	defer p.lk.Unlock()
 	p.node.RemoveStreamHandler(ProtocolPake)
@@ -110,7 +110,7 @@ func (p *PakeProtocol) onKeyExchange(s network.Stream) {
 	defer s.Close()
 	defer p.node.ResetOnShutdown(s)()
 
-	log.Infor("Authenticating peer...")
+	slog.Info("Authenticating peer...")
 
 	// pick an elliptic curve
 	curve := elliptic.P521()
@@ -118,65 +118,65 @@ func (p *PakeProtocol) onKeyExchange(s network.Stream) {
 	// initialize recipient Q ("1" indicates recipient)
 	Q, err := pake.Init(p.pwKey, 1, curve)
 	if err != nil {
-		log.Warningln(err)
+		slog.Warn("Error initializing PAKE", "err", err)
 		return
 	}
 
-	log.Infor("Waiting for key information...")
+	slog.Info("Waiting for key information...")
 	// Read init data from P
 	dat, err := p.node.ReadBytes(s)
 	if err != nil {
-		log.Warningln(err)
+		slog.Warn("Error reading bytes", "err", err)
 		return
 	}
 
-	log.Infor("Calculating on key information...")
+	slog.Info("Calculating on key information...")
 	// Use init data from P
 	if err = Q.Update(dat); err != nil {
-		log.Warningln(err)
+		slog.Warn("Error updating PAKE", "err", err)
 		return
 	}
 
-	log.Infor("Sending key information...")
+	slog.Info("Sending key information...")
 	// Send P calculated Data
 	if _, err = p.node.WriteBytes(s, Q.Bytes()); err != nil {
-		log.Warningln(err)
+		slog.Warn("Error writing bytes", "err", err)
 		return
 	}
 
-	log.Infor("Waiting for final key information...")
+	slog.Info("Waiting for final key information...")
 	// Read calculated data from P
 	dat, err = p.node.ReadBytes(s)
 	if err != nil {
-		log.Warningln(err)
+		slog.Warn("Error reading bytes", "err", err)
 		return
 	}
 
-	log.Infor("Calculating on key information...")
+	slog.Info("Calculating on key information...")
 	// Use calculated data from P
 	if err = Q.Update(dat); err != nil {
-		log.Warningln(err)
+		slog.Warn("Error updating PAKE", "err", err)
 		return
 	}
 
 	// Access session key
 	key, err := Q.SessionKey()
 	if err != nil {
-		log.Warningln(err)
+		slog.Warn("Error getting session key", "err", err)
 		return
 	}
 
-	log.Infor("Proofing authenticity to peer...")
+	slog.Info("Proofing authenticity to peer...")
 	// Send P encryption proof
 	if err := p.SendProof(s, key); err != nil {
-		log.Warningln(err)
+		slog.Warn("Error sending proof", "err", err)
 		return
 	}
 
-	log.Infor("Verifying proof from peer...")
+	slog.Info("Verifying proof from peer...")
 	// Read and verify encryption proof from P
 	if err := p.ReceiveVerifyProof(s, key); err != nil {
-		log.Warningln(err)
+		slog.Warn("Error verifying proof", "err", err)
 		return
 	}
 
@@ -184,26 +184,26 @@ func (p *PakeProtocol) onKeyExchange(s network.Stream) {
 
 	// We're done reading data from P
 	if err = s.CloseRead(); err != nil {
-		log.Warningln("error closing pake write", err)
+		slog.Warn("Error closing PAKE read", "err", err)
 	}
 
 	// Tell P the proof was verified and is okay
 	if _, err = p.node.WriteBytes(s, []byte("ok")); err != nil {
-		log.Warningln(err)
+		slog.Warn("Error writing bytes", "err", err)
 		return
 	}
 
 	// Wait for P to close the stream, so we know confirmation was received.
 	if err = p.node.WaitForEOF(s); err != nil {
-		log.Warningln("error waiting for EOF", err)
+		slog.Warn("Error waiting for EOF", "err", err)
 	}
 
 	// We're done sending data over the stream.
 	if err = s.Close(); err != nil {
-		log.Warningln("error closing pake stream", err)
+		slog.Warn("Error closing PAKE stream", "err", err)
 	}
 
-	log.Infor("Peer connected and authenticated!\n")
+	slog.Info("Peer connected and authenticated!\n")
 
 	p.lk.RLock()
 	defer p.lk.RUnlock()
@@ -221,7 +221,7 @@ func (p *PakeProtocol) StartKeyExchange(ctx context.Context, peerID peer.ID) ([]
 	}
 	defer s.Close()
 
-	log.Infor("Authenticating peer...")
+	slog.Info("Authenticating peer...")
 
 	// pick an elliptic curve
 	curve := elliptic.P521()
@@ -232,60 +232,67 @@ func (p *PakeProtocol) StartKeyExchange(ctx context.Context, peerID peer.ID) ([]
 		return nil, err
 	}
 
-	log.Infor("Sending key information...")
+	slog.Info("Sending key information...")
 	// Send Q init data
 	if _, err = p.node.WriteBytes(s, P.Bytes()); err != nil {
 		return nil, err
 	}
 
-	log.Infor("Waiting for key information...")
+	slog.Info("Waiting for key information...")
 	// Read calculated data from Q
 	dat, err := p.node.ReadBytes(s)
 	if err != nil {
+		slog.Warn("Error reading bytes", "err", err)
 		return nil, err
 	}
 
-	log.Infor("Calculating on key information...")
+	slog.Info("Calculating on key information...")
 	// Use calculated data from Q
 	if err = P.Update(dat); err != nil {
+		slog.Warn("Error updating PAKE", "err", err)
 		return nil, err
 	}
 
-	log.Infor("Sending key information...")
+	slog.Info("Sending key information...")
 	// Send Q calculated data
 	if _, err = p.node.WriteBytes(s, P.Bytes()); err != nil {
+		slog.Warn("Error writing bytes", "err", err)
 		return nil, err
 	}
 
 	// Extract calculated key
 	key, err := P.SessionKey()
 	if err != nil {
+		slog.Warn("Error getting session key", "err", err)
 		return nil, err
 	}
 
-	log.Infor("Verifying proof from peer...")
+	slog.Info("Verifying proof from peer...")
 	// Read and verify encryption proof from Q
 	if err = p.ReceiveVerifyProof(s, key); err != nil {
+		slog.Warn("Error verifying proof", "err", err)
 		return nil, err
 	}
 
 	p.AddAuthenticatedPeer(s.Conn().RemotePeer(), key)
 
-	log.Infor("Proofing authenticity to peer...")
+	slog.Info("Proofing authenticity to peer...")
 	// Send Q encryption proof
 	if err = p.SendProof(s, key); err != nil {
+		slog.Warn("Error sending proof", "err", err)
 		return nil, err
 	}
 
 	// We're done sending data to Q
 	if err = s.CloseWrite(); err != nil {
-		log.Warningln("error closing pake write", err)
+		slog.Warn("Error closing PAKE write", "err", err)
 	}
 
-	log.Infor("Waiting for confirmation from peer...")
+	slog.Info("Waiting for confirmation from peer...")
 	// Read confirmation from P
 	confirm, err := p.node.ReadBytes(s)
 	if err != nil {
+		slog.Warn("Error reading bytes", "err", err)
 		return nil, err
 	}
 
@@ -293,7 +300,7 @@ func (p *PakeProtocol) StartKeyExchange(ctx context.Context, peerID peer.ID) ([]
 		return nil, fmt.Errorf("peer did not respond with ok")
 	}
 
-	log.Infor("Peer connected and authenticated!\n")
+	slog.Info("Peer connected and authenticated!\n")
 	return key, nil
 }
 

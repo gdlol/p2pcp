@@ -1,6 +1,8 @@
 package mdns
 
 import (
+	"fmt"
+	"log/slog"
 	"net"
 	"time"
 
@@ -10,8 +12,6 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/pkg/errors"
 	"github.com/whyrusleeping/mdns"
-
-	"p2pcp/internal/log"
 )
 
 type Discoverer struct {
@@ -33,7 +33,7 @@ func (d *Discoverer) Discover(chanID int, handler func(info peer.AddrInfo)) erro
 		go d.drainEntriesChan(entriesCh, handler)
 
 		did := d.DiscoveryID(chanID)
-		log.Debugln("mDNS - Discovering", did)
+		slog.Debug("mDNS - Discovering", "did", did)
 		qp := &mdns.QueryParam{
 			Domain:  "local",
 			Entries: entriesCh,
@@ -42,9 +42,9 @@ func (d *Discoverer) Discover(chanID int, handler func(info peer.AddrInfo)) erro
 		}
 
 		err := mdns.Query(qp)
-		log.Debugln("mDNS - Discovering", did, " done.")
+		slog.Debug(fmt.Sprintf("mDNS - Discovering %s done.", did))
 		if err != nil {
-			log.Warningln("mDNS - query error", err)
+			slog.Warn("mDNS - query error", "err", err)
 		}
 		close(entriesCh)
 
@@ -68,7 +68,7 @@ func (d *Discoverer) drainEntriesChan(entries chan *mdns.ServiceEntry, handler f
 			continue
 		}
 
-		log.Debugln("mDNS - Found peer", pi.ID)
+		slog.Debug("mDNS - Found peer", "id", pi.ID)
 
 		if pi.ID == d.ID() {
 			continue
@@ -119,9 +119,9 @@ func onlyPrivate(addrs []ma.Multiaddr) []ma.Multiaddr {
 	for _, addr := range addrs {
 		if manet.IsPrivateAddr(addr) {
 			routable = append(routable, addr)
-			log.Debugf("\tprivate - %s\n", addr.String())
+			slog.Debug("mDNS - Found private address", "addr", addr.String())
 		} else {
-			log.Debugf("\tpublic - %s\n", addr.String())
+			slog.Debug("mDNS - Found public address", "addr", addr.String())
 		}
 	}
 	return routable

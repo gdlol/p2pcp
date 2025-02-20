@@ -3,5 +3,5 @@
   "enableGlobDot": true,
   "useGitignore": true,
   "ignorePaths": ["**/node_modules/**", "LICENSE"],
-  "words": ["devcontainer", "devcontainers", "packagejson"]
+  "words": ["devcontainer", "devcontainers", "packagejson", "stretchr", "twidth"]
 }

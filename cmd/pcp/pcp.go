@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/urfave/cli/v2"
 
-	"p2pcp/internal/log"
 	"p2pcp/pkg/receive"
 	"p2pcp/pkg/send"
 )
@@ -44,7 +44,7 @@ func main() {
 		},
 		Before: func(c *cli.Context) error {
 			if c.Bool("debug") {
-				log.SetLevel(log.DebugLevel)
+				slog.SetLogLoggerLevel(slog.LevelDebug)
 			}
 			return nil
 		},
@@ -75,14 +75,14 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 	go func() {
 		<-sigs
-		log.Infoln("Stopping...")
+		slog.Info("Stopping...")
 		signal.Stop(sigs)
 		cancel()
 	}()
 
 	err := app.RunContext(ctx, os.Args)
 	if err != nil {
-		log.Infof("error: %v\n", err)
+		slog.Error(fmt.Sprintf("error: %v\n", err))
 		os.Exit(1)
 	}
 }

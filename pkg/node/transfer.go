@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -15,7 +16,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	progress "github.com/schollz/progressbar/v3"
 
-	"p2pcp/internal/log"
 	"p2pcp/pkg/crypt"
 )
 
@@ -37,7 +37,7 @@ type TransferHandler interface {
 }
 
 func (t *TransferProtocol) RegisterTransferHandler(th TransferHandler) {
-	log.Debugln("Registering transfer handler")
+	slog.Debug("Registering transfer handler")
 	t.lk.Lock()
 	defer t.lk.Unlock()
 	t.th = th
@@ -45,7 +45,7 @@ func (t *TransferProtocol) RegisterTransferHandler(th TransferHandler) {
 }
 
 func (t *TransferProtocol) UnregisterTransferHandler() {
-	log.Debugln("Unregistering transfer handler")
+	slog.Debug("Unregistering transfer handler")
 	t.lk.Lock()
 	defer t.lk.Unlock()
 	t.node.RemoveStreamHandler(ProtocolTransfer)
@@ -66,7 +66,7 @@ func (t *TransferProtocol) onTransfer(s network.Stream) {
 	// Get PAKE session key for stream decryption
 	sKey, found := t.node.GetSessionKey(s.Conn().RemotePeer())
 	if !found {
-		log.Warningln("Received transfer from unauthenticated peer:", s.Conn().RemotePeer())
+		slog.Warn("Received transfer from unauthenticated peer", "peer", s.Conn().RemotePeer())
 		s.Reset() // Tell peer to go away
 		return
 	}
@@ -74,7 +74,7 @@ func (t *TransferProtocol) onTransfer(s network.Stream) {
 	// Read initialization vector from stream. This is sent first from our peer.
 	iv, err := t.node.ReadBytes(s)
 	if err != nil {
-		log.Warningln("Could not read stream initialization vector", err)
+		slog.Warn("Could not read stream initialization vector", "err", err)
 		s.Reset() // Stream is probably broken anyways
 		return
 	}
@@ -82,7 +82,7 @@ func (t *TransferProtocol) onTransfer(s network.Stream) {
 	t.lk.RLock()
 	defer func() {
 		if err = s.Close(); err != nil {
-			log.Warningln(err)
+			slog.Warn("Error closing stream", "err", err)
 		}
 		t.lk.RUnlock()
 	}()
@@ -90,7 +90,7 @@ func (t *TransferProtocol) onTransfer(s network.Stream) {
 	// Decrypt the stream
 	sd, err := crypt.NewStreamDecrypter(sKey, iv, s)
 	if err != nil {
-		log.Warningln("Could not instantiate stream decrypter", err)
+		slog.Warn("Could not instantiate stream decrypter", "err", err)
 		return
 	}
 
@@ -101,7 +101,7 @@ func (t *TransferProtocol) onTransfer(s network.Stream) {
 		if err == io.EOF {
 			break // End of archive
 		} else if err != nil {
-			log.Warningln("Error reading next tar element", err)
+			slog.Warn("Error reading next tar element", "err", err)
 			return
 		}
 		t.th.HandleFile(hdr, tr)
@@ -110,13 +110,13 @@ func (t *TransferProtocol) onTransfer(s network.Stream) {
 	// Read file hash from the stream and check if it matches
 	hash, err := t.node.ReadBytes(s)
 	if err != nil {
-		log.Warningln("Could not read hash", err)
+		slog.Warn("Could not read hash", "err", err)
 		return
 	}
 
 	// Check if hashes match
 	if err = sd.Authenticate(hash); err != nil {
-		log.Warningln("Could not authenticate received data", err)
+		slog.Warn("Could not authenticate received data", "err", err)
 		return
 	}
 }
@@ -161,9 +161,9 @@ func (t *TransferProtocol) Transfer(ctx context.Context, peerID peer.ID, basePat
 
 	tw := tar.NewWriter(se)
 	err = filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
-		log.Debugln("Preparing file for transmission:", path)
+		slog.Debug("Preparing file for transmission", "path", path)
 		if err != nil {
-			log.Debugln("Error walking file:", err)
+			slog.Debug("Error walking file", "err", err)
 			return err
 		}
 
@@ -205,7 +205,7 @@ func (t *TransferProtocol) Transfer(ctx context.Context, peerID peer.ID, basePat
 	}
 
 	if err = tw.Close(); err != nil {
-		log.Debugln("Error closing tar ball", err)
+		slog.Debug("Error closing tar ball", "err", err)
 	}
 
 	// Send the hash of all sent data, so our recipient can check the data.

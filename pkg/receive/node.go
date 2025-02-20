@@ -2,6 +2,8 @@ package receive
 
 import (
 	"bufio"
+	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"sync"
@@ -9,7 +11,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"p2pcp/internal/format"
-	"p2pcp/internal/log"
 	"p2pcp/pkg/dht"
 	"p2pcp/pkg/mdns"
 	pcpnode "p2pcp/pkg/node"
@@ -106,7 +107,7 @@ func (n *Node) StartDiscovering(c *cli.Context) {
 			case dht.ErrConnThresholdNotReached:
 				e.Log()
 			default:
-				log.Warningln(err)
+				slog.Warn(err.Error())
 			}
 		}(discoverer)
 	}
@@ -127,7 +128,7 @@ func (n *Node) StopDiscovering() {
 // HandlePeer is called async from the discoverers. It's okay to have long running tasks here.
 func (n *Node) HandlePeer(pi peer.AddrInfo) {
 	if n.GetState() != pcpnode.Discovering {
-		log.Debugln("Received a peer from the discoverer although we're not discovering")
+		slog.Debug("Received a peer from the discoverer although we're not discovering")
 		return
 	}
 
@@ -136,27 +137,27 @@ func (n *Node) HandlePeer(pi peer.AddrInfo) {
 	switch peerState.(PeerState) {
 	case NotConnected:
 	case Connecting:
-		log.Debugln("Skipping node as we're already trying to connect", pi.ID)
+		slog.Debug("Skipping node as we're already trying to connect", "id", pi.ID)
 		return
 	case FailedConnecting:
 		// TODO: Check if multiaddrs have changed and only connect if that's the case
-		log.Debugln("We tried to connect previously but couldn't establish a connection, try again", pi.ID)
+		slog.Debug("We tried to connect previously but couldn't establish a connection, try again", "id", pi.ID)
 	case FailedAuthentication:
-		log.Debugln("We tried to connect previously but the node didn't pass authentication  -> skipping", pi.ID)
+		slog.Debug("We tried to connect previously but the node didn't pass authentication  -> skipping", "id", pi.ID)
 		return
 	}
 
-	log.Debugln("Connecting to peer:", pi.ID)
+	slog.Debug("Connecting to peer:", "id", pi.ID)
 	n.peerStates.Store(pi.ID, Connecting)
 	if err := n.Connect(n.ServiceContext(), pi); err != nil {
-		log.Debugln("Error connecting to peer:", pi.ID, err)
+		slog.Debug("Error connecting to peer:", "id", pi.ID, "err", err)
 		n.peerStates.Store(pi.ID, FailedConnecting)
 		return
 	}
 
 	// Negotiate PAKE
 	if _, err := n.StartKeyExchange(n.ServiceContext(), pi.ID); err != nil {
-		log.Errorln("Peer didn't pass authentication:", err)
+		slog.Error("Peer didn't pass authentication:", "err", err)
 		n.peerStates.Store(pi.ID, FailedAuthentication)
 		return
 	}
@@ -164,7 +165,7 @@ func (n *Node) HandlePeer(pi peer.AddrInfo) {
 
 	// We're authenticated so can initiate a transfer
 	if n.GetState() == pcpnode.Connected {
-		log.Debugln("already connected and authenticated with another node")
+		slog.Debug("already connected and authenticated with another node")
 		return
 	}
 	n.SetState(pcpnode.Connected)
@@ -182,9 +183,9 @@ func (n *Node) HandlePushRequest(pr *p2p.PushRequest) (bool, error) {
 	if pr.IsDir {
 		obj = "Directory"
 	}
-	log.Infof("%s: %s (%s)\n", obj, pr.Name, format.Bytes(pr.Size))
+	slog.Info(fmt.Sprintf("%s: %s (%s)\n", obj, pr.Name, format.Bytes(pr.Size)))
 	for {
-		log.Infof("Do you want to receive this %s? [y,n,i,?] ", strings.ToLower(obj))
+		slog.Info(fmt.Sprintf("Do you want to receive this %s? [y,n,i,?] ", strings.ToLower(obj)))
 		scanner := bufio.NewScanner(os.Stdin)
 		if !scanner.Scan() {
 			return true, errors.Wrap(scanner.Err(), "failed reading from stdin")
@@ -221,7 +222,7 @@ func (n *Node) HandlePushRequest(pr *p2p.PushRequest) (bool, error) {
 			return false, nil
 		}
 
-		log.Infoln("Invalid input")
+		slog.Info("Invalid input")
 	}
 }
 
@@ -248,9 +249,9 @@ func (n *Node) TransferFinishHandler(size int64) chan int64 {
 		}
 
 		if received == size {
-			log.Infoln("Successfully received file/directory!")
+			slog.Info("Successfully received file/directory!")
 		} else {
-			log.Infof("WARNING: Only received %d of %d bytes!\n", received, size)
+			slog.Info(fmt.Sprintf("WARNING: Only received %d of %d bytes!\n", received, size))
 		}
 
 		n.Shutdown()

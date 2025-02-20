@@ -2,6 +2,7 @@ package dht
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/host"
@@ -9,7 +10,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 
-	"p2pcp/internal/log"
 	"p2pcp/internal/wrap"
 )
 
@@ -38,7 +38,7 @@ func (d *Discoverer) Discover(chanID int, handler func(info peer.AddrInfo)) erro
 
 	for {
 		did := d.DiscoveryID(chanID)
-		log.Debugln("DHT - Discovering", did)
+		slog.Debug("DHT - Discovering", "did", did)
 		cID, err := strToCid(did)
 		if err != nil {
 			return err
@@ -47,13 +47,13 @@ func (d *Discoverer) Discover(chanID int, handler func(info peer.AddrInfo)) erro
 		// Find new provider with a timeout, so the discovery ID is renewed if necessary.
 		ctx, cancel := context.WithTimeout(d.ServiceContext(), provideTimeout)
 		for pi := range d.dht.FindProvidersAsync(ctx, cID, 100) {
-			log.Debugln("DHT - Found peer ", pi.ID)
+			slog.Debug("DHT - Found peer ", "id", pi.ID)
 			pi.Addrs = onlyPublic(pi.Addrs)
 			if isRoutable(pi) {
 				go handler(pi)
 			}
 		}
-		log.Debugln("DHT - Discovering", did, " done.")
+		slog.Debug("DHT - Discovering done.")
 
 		// cannot defer cancel in this for loop
 		cancel()
@@ -81,9 +81,9 @@ func onlyPublic(addrs []ma.Multiaddr) []ma.Multiaddr {
 	for _, addr := range addrs {
 		if manet.IsPublicAddr(addr) {
 			routable = append(routable, addr)
-			log.Debugf("\tpublic - %s\n", addr.String())
+			slog.Debug("DHT - Found public address", "addr", addr.String())
 		} else {
-			log.Debugf("\tprivate - %s\n", addr.String())
+			slog.Debug("DHT - Found private address", "addr", addr.String())
 		}
 	}
 	return routable

@@ -2,8 +2,8 @@ package dht
 
 import (
 	"context"
-
-	"p2pcp/internal/log"
+	"fmt"
+	"log/slog"
 )
 
 type ErrConnThresholdNotReached struct {
@@ -23,10 +23,10 @@ func (e ErrConnThresholdNotReached) Log() {
 		}
 	}
 
-	log.Warningln(e)
+	slog.Warn(e.Error())
 	for _, err := range e.BootstrapErrs {
-		log.Warningf("\t%s\n", err)
+		slog.Warn(fmt.Sprintf("\t%s\n", err))
 	}
 
-	log.Warningln("this means you will only be able to transfer files in your local network")
+	slog.Warn("this means you will only be able to transfer files in your local network")
 }

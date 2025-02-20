@@ -2,12 +2,12 @@ package node
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"p2pcp/internal/log"
 	p2p "p2pcp/pkg/pb"
 )
 
@@ -30,7 +30,7 @@ func NewPushProtocol(node *Node) *PushProtocol {
 }
 
 func (p *PushProtocol) RegisterPushRequestHandler(prh PushRequestHandler) {
-	log.Debugln("Registering push request handler")
+	slog.Debug("Registering push request handler")
 	p.lk.Lock()
 	defer p.lk.Unlock()
 	p.prh = prh
@@ -38,7 +38,7 @@ func (p *PushProtocol) RegisterPushRequestHandler(prh PushRequestHandler) {
 }
 
 func (p *PushProtocol) UnregisterPushRequestHandler() {
-	log.Debugln("Unregistering push request handler")
+	slog.Debug("Unregistering push request handler")
 	p.lk.Lock()
 	defer p.lk.Unlock()
 	p.node.RemoveStreamHandler(ProtocolPushRequest)
@@ -50,34 +50,34 @@ func (p *PushProtocol) onPushRequest(s network.Stream) {
 	defer p.node.ResetOnShutdown(s)()
 
 	if !p.node.IsAuthenticated(s.Conn().RemotePeer()) {
-		log.Infoln("Received push request from unauthenticated peer")
+		slog.Info("Received push request from unauthenticated peer")
 		s.Reset() // Tell peer to go away
 		return
 	}
 
 	req := &p2p.PushRequest{}
 	if err := p.node.Read(s, req); err != nil {
-		log.Infoln(err)
+		slog.Info("Error reading push request", "err", err)
 		return
 	}
-	log.Debugln("Received push request", req.Name, req.Size)
+	slog.Debug("Received push request", "name", req.Name, "size", req.Size)
 
 	p.lk.RLock()
 	defer p.lk.RUnlock()
 	accept, err := p.prh.HandlePushRequest(req)
 	if err != nil {
-		log.Infoln(err)
+		slog.Info("Error handling push request", "err", err)
 		accept = false
 		// Fall through and tell peer we won't handle the request
 	}
 
 	if err := p.node.Send(s, p2p.NewPushResponse(accept)); err != nil {
-		log.Infoln(err)
+		slog.Info("Error sending push response", "err", err)
 		return
 	}
 
 	if err = p.node.WaitForEOF(s); err != nil {
-		log.Infoln(err)
+		slog.Info("Error waiting for EOF", "err", err)
 		return
 	}
 }
@@ -89,7 +89,7 @@ func (p *PushProtocol) SendPushRequest(ctx context.Context, peerID peer.ID, file
 	}
 	defer s.Close()
 
-	log.Debugln("Sending push request", filename, size)
+	slog.Debug("Sending push request", "filename", filename, "size", size)
 	if err = p.node.Send(s, p2p.NewPushRequest(filename, size, isDir)); err != nil {
 		return false, err
 	}

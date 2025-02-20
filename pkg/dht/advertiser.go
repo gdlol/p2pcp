@@ -2,11 +2,11 @@ package dht
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/host"
 
-	"p2pcp/internal/log"
 	"p2pcp/internal/wrap"
 )
 
@@ -53,7 +53,8 @@ func (a *Advertiser) Advertise(chanID int) error {
 	}
 	defer a.ServiceStopped()
 
-	log.Debugln("DHT - Waiting for public IP...")
+	// log.Debugln("DHT - Waiting for public IP...")
+	slog.Debug("DHT - Waiting for public IP...")
 	for {
 		// Only advertise in the DHT if we have a public addr.
 		if !a.HasPublicAddr() {
@@ -64,7 +65,7 @@ func (a *Advertiser) Advertise(chanID int) error {
 				continue
 			}
 		}
-		log.Debugln("DHT - Identified a public IP in", a.Addrs())
+		slog.Debug("DHT - Identified a public IP in", "addrs", a.Addrs())
 		break
 	}
 
@@ -73,7 +74,7 @@ func (a *Advertiser) Advertise(chanID int) error {
 		if err == context.Canceled {
 			break
 		} else if err != nil && err != context.DeadlineExceeded {
-			log.Warningf("Error providing: %s\n", err)
+			slog.Warn("Error providing:", "err", err)
 		}
 	}
 
@@ -102,8 +103,8 @@ func (a *Advertiser) Shutdown() {
 // closest peers to the key/CID before it goes on to provide the record to them.
 // Not setting a timeout here will make the DHT wander forever.
 func (a *Advertiser) provide(ctx context.Context, id string) error {
-	log.Debugln("DHT - Advertising", id)
-	defer log.Debugln("DHT - Advertising", id, "done")
+	slog.Debug("DHT - Advertising", "id", id)
+	defer slog.Debug("DHT - Advertising", id, "done")
 	cID, err := strToCid(id)
 	if err != nil {
 		return err

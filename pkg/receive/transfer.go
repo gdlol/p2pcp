@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	progress "github.com/schollz/progressbar/v3"
+	"log/slog"
 
-	"p2pcp/internal/log"
+	progress "github.com/schollz/progressbar/v3"
 )
 
 type TransferHandler struct {
@@ -29,7 +29,7 @@ func (th *TransferHandler) Done() {
 func (th *TransferHandler) HandleFile(hdr *tar.Header, src io.Reader) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		log.Warningln("error determining current working directory:", err)
+		slog.Warn("error determining current working directory", "err", err)
 		cwd = "."
 	}
 
@@ -38,12 +38,12 @@ func (th *TransferHandler) HandleFile(hdr *tar.Header, src io.Reader) {
 	if finfo.IsDir() {
 		err := os.MkdirAll(joined, finfo.Mode())
 		if err != nil {
-			log.Warningln("error creating directory:", joined, err)
+			slog.Warn("error creating directory", "path", joined, "err", err)
 		}
 	}
 	newFile, err := os.OpenFile(joined, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, finfo.Mode().Perm())
 	if err != nil {
-		log.Warningln("error creating file:", joined, err)
+		slog.Warn("error creating file", "path", joined, "err", err)
 		return
 	}
 
@@ -51,7 +51,7 @@ func (th *TransferHandler) HandleFile(hdr *tar.Header, src io.Reader) {
 	n, err := io.Copy(io.MultiWriter(newFile, bar), src)
 	th.received += n
 	if err != nil {
-		log.Warningln("error writing file content:", joined, err)
+		slog.Warn("error writing file content", "path", joined, "err", err)
 		return
 	}
 }

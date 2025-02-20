@@ -117,7 +117,7 @@ func TestFormatTransferStatus(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		run := fmt.Sprintf("Formatting Transfer Status")
+		run := "Formatting Transfer Status"
 		t.Run(run, func(t *testing.T) {
 			s := TransferStatus(tt.filename, tt.iteration, tt.twidth, tt.percent, tt.eta, tt.bytesPerS)
 			assert.Equal(t, tt.want, s)

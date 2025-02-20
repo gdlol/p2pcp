@@ -3,12 +3,12 @@ package receive
 import (
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	"p2pcp/internal/log"
 	"p2pcp/pkg/config"
 	p2p "p2pcp/pkg/pb"
 )
@@ -70,7 +70,7 @@ func Action(c *cli.Context) error {
 	}
 
 	// Search for identifier
-	log.Infof("Looking for peer %s... \n", c.Args().First())
+	slog.Info("Looking for peer", "peer", c.Args().First())
 	local.StartDiscovering(c)
 
 	// Wait for the user to stop the tool or the transfer to finish.
@@ -84,17 +84,17 @@ func Action(c *cli.Context) error {
 }
 
 func printInformation(data *p2p.PushRequest) {
-	log.Infoln("Sending request information:")
-	log.Infoln("\tPeer:\t", data.Header.NodeId)
-	log.Infoln("\tName:\t", data.Name)
-	log.Infoln("\tSize:\t", data.Size)
-	log.Infoln("\tSign:\t", hex.EncodeToString(data.Header.Signature))
-	log.Infoln("\tPubKey:\t", hex.EncodeToString(data.Header.GetNodePubKey()))
+	slog.Info("Sending request information:")
+	slog.Info("\tPeer:", "peer", data.Header.NodeId)
+	slog.Info("\tName:", "name", data.Name)
+	slog.Info("\tSize:", "size", data.Size)
+	slog.Info("\tSign:", "sign", hex.EncodeToString(data.Header.Signature))
+	slog.Info("\tPubKey:", "pubkey", hex.EncodeToString(data.Header.GetNodePubKey()))
 }
 
 func help() {
-	log.Infoln("y: accept the file transfer")
-	log.Infoln("n: reject the file transfer")
-	log.Infoln("i: show information about the sender and file to be received")
-	log.Infoln("?: this help message")
+	slog.Info("y: accept the file transfer")
+	slog.Info("n: reject the file transfer")
+	slog.Info("i: show information about the sender and file to be received")
+	slog.Info("?: this help message")
 }

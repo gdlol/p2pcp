@@ -2,6 +2,7 @@ package send
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -9,7 +10,6 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"p2pcp/internal/log"
 	"p2pcp/pkg/config"
 )
 
@@ -62,7 +62,7 @@ func Action(c *cli.Context) error {
 		return err
 	}
 
-	log.Debugln("Validating given word count:", c.Int("w"))
+	slog.Debug("Validating given word count", "count", c.Int("w"))
 	if c.Int("w") < 3 && !c.Bool("homebrew") {
 		return fmt.Errorf("the number of words must not be less than 3")
 	}
@@ -85,8 +85,8 @@ func Action(c *cli.Context) error {
 	}
 
 	// Broadcast the code to be found by peers.
-	log.Infoln("Code is: ", strings.Join(local.Words, "-"))
-	log.Infoln("On the other machine run:\n\tpcp receive", strings.Join(local.Words, "-"))
+	slog.Info("Code is", "code", strings.Join(local.Words, "-"))
+	slog.Info("On the other machine run", "command", fmt.Sprintf("\tpcp receive %s", strings.Join(local.Words, "-")))
 
 	local.StartAdvertising(c)
 
@@ -105,7 +105,7 @@ func Action(c *cli.Context) error {
 // checks whether the filepath represents a directory. This is
 // currently not supported.
 func validateFile(filepath string) error {
-	log.Debugln("Validating given file:", filepath)
+	slog.Debug("Validating given file", "filepath", filepath)
 
 	if filepath == "" {
 		return fmt.Errorf("please specify the file you want to transfer")

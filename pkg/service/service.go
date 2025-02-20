@@ -2,11 +2,12 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
-	"github.com/pkg/errors"
+	"log/slog"
 
-	"p2pcp/internal/log"
+	"github.com/pkg/errors"
 )
 
 // State represents the lifecycle states of a service.
@@ -73,7 +74,7 @@ func New(name string) *Service {
 
 // ServiceStarted marks this service as started.
 func (s *Service) ServiceStarted() error {
-	log.Debugln(s.name, "- Service has started")
+	slog.Debug(fmt.Sprintf("%s - Service has started", s.name))
 
 	s.lk.Lock()
 	defer s.lk.Unlock()
@@ -118,7 +119,7 @@ func (s *Service) ServiceStopped() {
 	s.state = Stopped
 
 	close(s.done)
-	log.Debugln(s.name, "- Service has stopped")
+	slog.Debug(fmt.Sprintf("%s - Service has stopped", s.name))
 }
 
 // ServiceContext returns the context associated with this
@@ -134,7 +135,7 @@ func (s *Service) ServiceContext() context.Context {
 // This function blocks until the done channel was closed
 // which happens when ServiceStopped is called.
 func (s *Service) Shutdown() {
-	log.Debugln(s.name, "- Service shutting down...")
+	slog.Debug(fmt.Sprintf("%s - Service shutting down...", s.name))
 
 	s.lk.Lock()
 	if s.state != Started {
@@ -146,5 +147,5 @@ func (s *Service) Shutdown() {
 
 	close(s.shutdown)
 	<-s.done
-	log.Debugln(s.name, "- Service was shut down")
+	slog.Debug(fmt.Sprintf("%s - Service was shut down", s.name))
 }

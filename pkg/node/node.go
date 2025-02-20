@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -22,7 +23,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	"p2pcp/internal/log"
 	"p2pcp/pkg/crypt"
 	p2p "p2pcp/pkg/pb"
 	"p2pcp/pkg/service"
@@ -65,7 +65,7 @@ type Node struct {
 
 // New creates a new, fully initialized node with the given options.
 func New(c *cli.Context, wrds []string, opts ...libp2p.Option) (*Node, error) {
-	log.Debugln("Initialising local node...")
+	slog.Debug("Initialising local node...")
 
 	if c.Bool("homebrew") {
 		wrds = words.HomebrewList()
@@ -117,14 +117,14 @@ func New(c *cli.Context, wrds []string, opts ...libp2p.Option) (*Node, error) {
 
 func (n *Node) Shutdown() {
 	if err := n.Host.Close(); err != nil {
-		log.Warningln("error closing node", err)
+		slog.Warn("error closing node", "err", err)
 	}
 
 	n.ServiceStopped()
 }
 
 func (n *Node) SetState(s State) State {
-	log.Debugln("Setting local node state to", s)
+	slog.Debug(fmt.Sprintf("Setting local node state to %s", s))
 	n.stateLk.Lock()
 	defer n.stateLk.Unlock()
 	n.state = s
@@ -142,7 +142,7 @@ func (n *Node) GetState() State {
 func (n *Node) Send(s network.Stream, msg p2p.HeaderMessage) error {
 	defer func() {
 		if err := s.CloseWrite(); err != nil {
-			log.Warningln("Error closing writer part of stream after sending", err)
+			slog.Warn("Error closing writer part of stream after sending", "err", err)
 		}
 	}()
 
@@ -159,7 +159,7 @@ func (n *Node) Send(s network.Stream, msg p2p.HeaderMessage) error {
 		Timestamp:  time.Now().Unix(),
 	}
 	msg.SetHeader(hdr)
-	log.Debugf("Sending message %T to %s with request ID %s\n", msg, s.Conn().RemotePeer().String(), hdr.RequestId)
+	slog.Debug(fmt.Sprintf("Sending message %T to %s with request ID %s\n", msg, s.Conn().RemotePeer().String(), hdr.RequestId))
 
 	// Transform msg to binary to calculate the signature.
 	data, err := proto.Marshal(msg)
@@ -263,7 +263,7 @@ func (n *Node) Read(s network.Stream, buf p2p.HeaderMessage) error {
 		return err
 	}
 
-	log.Debugf("Reading message from %s\n", s.Conn().RemotePeer().String())
+	slog.Debug(fmt.Sprintf("Reading message from %s", s.Conn().RemotePeer().String()))
 	// Decrypt the data with the PAKE session key if it is found
 	sKey, found := n.GetSessionKey(s.Conn().RemotePeer())
 	if found {
@@ -276,7 +276,7 @@ func (n *Node) Read(s network.Stream, buf p2p.HeaderMessage) error {
 	if err = proto.Unmarshal(data, buf); err != nil {
 		return err
 	}
-	log.Debugf("type %T with request ID %s\n", buf, buf.GetHeader().RequestId)
+	slog.Debug(fmt.Sprintf("Received message %T with request ID %s\n", buf, buf.GetHeader().RequestId))
 
 	valid, err := n.authenticateMessage(buf)
 	if err != nil {
@@ -330,7 +330,7 @@ func (n *Node) ResetOnShutdown(s network.Stream) context.CancelFunc {
 // has received all data and won't read from this stream anymore. Alternatively
 // there is a 10 second timeout.
 func (n *Node) WaitForEOF(s network.Stream) error {
-	log.Debugln("Waiting for stream reset from peer...")
+	slog.Debug("Waiting for stream reset from peer...")
 	timeout := time.After(3 * time.Minute)
 	done := make(chan error)
 	go func() {

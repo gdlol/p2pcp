@@ -2,8 +2,8 @@ package mdns
 
 import (
 	"context"
-
-	"p2pcp/internal/log"
+	"fmt"
+	"log/slog"
 
 	"github.com/libp2p/go-libp2p-core/host"
 )
@@ -27,7 +27,7 @@ func (a *Advertiser) Advertise(chanID int) error {
 
 	for {
 		did := a.DiscoveryID(chanID)
-		log.Debugln("mDNS - Advertising ", did)
+		slog.Debug("mDNS - Advertising ", "did", did)
 		ctx, cancel := context.WithTimeout(a.ServiceContext(), Timeout)
 		mdns, err := wrapdiscovery.NewMdnsService(ctx, a, a.interval, did)
 		if err != nil {
@@ -37,11 +37,11 @@ func (a *Advertiser) Advertise(chanID int) error {
 
 		select {
 		case <-a.SigShutdown():
-			log.Debugln("mDNS - Advertising", did, " done - shutdown signal")
+			slog.Debug(fmt.Sprintf("mDNS - Advertising %s done - shutdown signal", did))
 			cancel()
 			return mdns.Close()
 		case <-ctx.Done():
-			log.Debugln("mDNS - Advertising", did, "done -", ctx.Err())
+			slog.Debug(fmt.Sprintf("mDNS - Advertising %s done - %s", did, ctx.Err()))
 			cancel()
 			if ctx.Err() == context.DeadlineExceeded {
 				_ = mdns.Close()
