@@ -1,0 +1,21 @@
+{
+  "git": {
+    "attributes": "/home/dev/.config/git/attributes",
+    "ignore": "/home/dev/.config/git/ignore"
+  },
+  "pnpm": {
+    "rc": "/home/dev/.config/pnpm/rc"
+  },
+  "prettier": {
+    ".prettierrc.json": ".prettierrc.json"
+  },
+  "cspell": {
+    "cspell.json": "cspell.json"
+  },
+  "workspaces": {
+    "../git/attributes": ".gitattributes",
+    "../git/ignore": ".gitignore",
+    "../../package.json": "package.json",
+    "pnpm-workspace.yaml": "pnpm-workspace.yaml"
+  }
+}

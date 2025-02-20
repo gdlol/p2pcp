@@ -1,0 +1,7 @@
+{
+  "version": "0.2",
+  "enableGlobDot": true,
+  "useGitignore": true,
+  "ignorePaths": ["**/node_modules/**", "LICENSE"],
+  "words": ["devcontainer", "devcontainers", "packagejson"]
+}

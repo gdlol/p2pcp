@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "cspell": "^8.17.3",
+    "prettier": "^3.5.1",
+    "prettier-plugin-packagejson": "^2.5.8"
+  }
+}

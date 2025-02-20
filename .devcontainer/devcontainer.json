@@ -1,0 +1,32 @@
+// spell-checker:ignore esbenp
+{
+  "name": "p2pcp",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "devcontainer",
+  "remoteUser": "dev",
+  "overrideCommand": true,
+  "workspaceFolder": "/workspaces/p2pcp",
+  "features": {
+    "ghcr.io/devcontainer-config/features/user-init:2": {},
+    "ghcr.io/devcontainer-config/features/dot-config:2": {},
+    "ghcr.io/devcontainers/features/go:1": { "version": "1.24" },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["esbenp.prettier-vscode", "ms-azuretools.vscode-docker", "streetsidesoftware.code-spell-checker"],
+      "settings": {
+        "files.associations": { "ignore": "ignore", "attributes": "properties", "rc": "properties" },
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[dockerfile]": { "editor.defaultFormatter": "ms-azuretools.vscode-docker" },
+        "cSpell.autoFormatConfigFile": true,
+        "cSpell.checkOnlyEnabledFileTypes": false,
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        }
+      }
+    }
+  },
+  "onCreateCommand": "pnpm install"
+}
