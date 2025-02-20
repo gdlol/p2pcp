@@ -3,5 +3,18 @@
   "enableGlobDot": true,
   "useGitignore": true,
   "ignorePaths": ["**/node_modules/**", "LICENSE"],
-  "words": ["devcontainer", "devcontainers", "packagejson", "stretchr", "twidth"]
+  "words": [
+    "devcontainer",
+    "devcontainers",
+    "drunkenbishop",
+    "libp2p",
+    "mdns",
+    "moul",
+    "notifee",
+    "packagejson",
+    "Peerstore",
+    "stretchr",
+    "twidth",
+    "Wrapf"
+  ]
 }
