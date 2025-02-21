@@ -1,6 +1,9 @@
 {
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "go run build"
+  },
   "dependencies": {
     "cspell": "^8.17.3",
     "prettier": "^3.5.1",

@@ -4,6 +4,7 @@
   "useGitignore": true,
   "ignorePaths": ["**/node_modules/**", "LICENSE"],
   "words": [
+    "autorelay",
     "devcontainer",
     "devcontainers",
     "drunkenbishop",
@@ -13,6 +14,7 @@
     "notifee",
     "packagejson",
     "Peerstore",
+    "pstoremem",
     "stretchr",
     "twidth",
     "Wrapf"
