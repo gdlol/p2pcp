@@ -11,10 +11,11 @@ import (
 )
 
 var ReceiveCmd = &cobra.Command{
-	Use:   "receive topic [path]",
+	Use:   "receive id {pin | token} [path]",
 	Short: "Receives file/directory from remote peer to specified directory.",
 	Args: func(cmd *cobra.Command, args []string) error {
-		if err := cobra.RangeArgs(1, 2)(cmd, args); err != nil {
+		if err := cobra.RangeArgs(2, 3)(cmd, args); err != nil {
+			fmt.Fprintln(os.Stderr, err)
 			cmd.Usage()
 			os.Exit(1)
 		}
@@ -23,14 +24,19 @@ var ReceiveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 
-		topic := args[0]
-		if len(topic) < 7 {
-			return fmt.Errorf("topic: must be at least 7 characters long")
+		id := args[0]
+		if len(id) < 7 {
+			return fmt.Errorf("id: must be at least 7 characters long")
+		}
+
+		secret := args[1]
+		if len(secret) < 4 {
+			return fmt.Errorf("pin/token: must be at least 4 characters long")
 		}
 
 		var path string
 		var err error
-		if len(args) == 1 {
+		if len(args) == 2 {
 			path, err = os.Getwd()
 			if err != nil {
 				slog.Error("Error getting current working directory.", "error", err)
@@ -39,13 +45,12 @@ var ReceiveCmd = &cobra.Command{
 		} else {
 			path, err = filepath.Abs(args[1])
 			if err != nil {
-				slog.Error("Error getting absolute path.", "path", args[1], "error", err)
+				slog.Error("Error getting absolute path.", "path", args[2], "error", err)
 				return err
 			}
 		}
 
-		slog.Debug("Receiving...", "topic", topic, "path", path)
-
-		return receive.Receive(ctx, topic, path)
+		slog.Debug("Receiving...", "id", id, "path", path)
+		return receive.Receive(ctx, id, secret, path)
 	},
 }

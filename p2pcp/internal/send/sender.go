@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"p2pcp/internal/auth"
 	"p2pcp/internal/node"
 	"p2pcp/internal/transfer"
 	"sync"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 )
 
@@ -19,7 +21,7 @@ type Sender interface {
 	GetNode() node.Node
 	GetAdvertiseTopic() string
 	AdvertiseWAN(ctx context.Context)
-	Send(ctx context.Context, path string) error
+	Send(ctx context.Context, secretHash []byte, path string, strict bool) error
 	Close()
 }
 
@@ -61,9 +63,14 @@ func (s *sender) AdvertiseWAN(ctx context.Context) {
 	}
 }
 
-func (s *sender) Send(ctx context.Context, path string) error {
+func (s *sender) Send(ctx context.Context, secretHash []byte, path string, strict bool) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	n := s.node
 	host := n.GetHost()
+	var authenticatedPeer peer.ID = ""
+	authenticate := make(chan bool, 1)
 
 	streams := make(chan transfer.ChannelStream)
 	channel := transfer.NewChannel(ctx, streams, transfer.DefaultPayloadSize)
@@ -72,8 +79,41 @@ func (s *sender) Send(ctx context.Context, path string) error {
 	mutex := sync.Mutex{}
 	host.SetStreamHandler(node.Protocol, func(stream network.Stream) {
 		slog.Debug("New stream received.")
+		if authenticatedPeer.Validate() == nil && stream.Conn().RemotePeer() != authenticatedPeer {
+			slog.Warn("Received request from other peer after authentication.", "peer", stream.Conn().RemotePeer())
+			return
+		}
+
 		mutex.Lock()
 		defer mutex.Unlock()
+		if authenticatedPeer.Validate() != nil {
+			defer stream.Close()
+
+			buffer := make([]byte, len(secretHash))
+			_, err := io.ReadFull(stream, buffer)
+			if err != nil {
+				slog.Error("Error reading secret hash.", "error", err)
+				stream.Write([]byte{0})
+				if !strict {
+					authenticate <- false
+				}
+				return
+			}
+			if !auth.VerifyHash(buffer, secretHash) {
+				slog.Warn("Invalid secret hash received.")
+				stream.Write([]byte{0})
+				if !strict {
+					authenticate <- false
+				}
+				return
+			}
+
+			stream.Write([]byte{1})
+			authenticatedPeer = stream.Conn().RemotePeer()
+			authenticate <- true
+			return
+		}
+
 		channelStream := transfer.NewChannelStream(stream)
 		select {
 		case streams <- *channelStream:
@@ -82,6 +122,12 @@ func (s *sender) Send(ctx context.Context, path string) error {
 		}
 	})
 	defer host.RemoveStreamHandler(node.Protocol)
+
+	if !<-authenticate {
+		cancel()
+		return fmt.Errorf("failed to authenticate receiver")
+	}
+	slog.Info("Authenticated receiver.", "id", authenticatedPeer)
 
 	pipeReader, pipeWriter := io.Pipe()
 	done := make(chan struct{}, 1)

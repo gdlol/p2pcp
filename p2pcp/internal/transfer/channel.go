@@ -2,7 +2,6 @@ package transfer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -82,7 +81,7 @@ func (c *channel) Read(p []byte) (n int, err error) {
 		}
 
 		if packet.header.ack {
-			return 0, errors.New("unexpected ACK packet")
+			return 0, fmt.Errorf("unexpected ACK packet")
 		}
 		if packet.header.seq != c.readSeq {
 			if packet.header.seq+1 == c.readSeq { // Previous ACK was lost.
@@ -146,7 +145,7 @@ func (c *channel) Write(p []byte) (n int, err error) {
 			continue
 		}
 		if !packet.header.ack {
-			return 0, errors.New("unexpected data packet")
+			return 0, fmt.Errorf("unexpected data packet")
 		}
 		if packet.header.seq != c.writeSeq {
 			return 0, fmt.Errorf(
@@ -213,7 +212,7 @@ func (c *channel) Close() error {
 					c.writeSeq, packet.header.seq)
 			}
 			if len(packet.payload) != 0 {
-				return errors.New("unexpected data packet during close")
+				return fmt.Errorf("unexpected data packet during close")
 			}
 			c.readClosed = true
 			err = c.writeAck(c.readSeq)

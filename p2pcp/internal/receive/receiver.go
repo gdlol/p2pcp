@@ -19,8 +19,8 @@ import (
 
 type Receiver interface {
 	GetNode() node.Node
-	FindPeer(ctx context.Context, topic string) (*peer.AddrInfo, error)
-	Receive(ctx context.Context, peer peer.AddrInfo, path string) error
+	FindPeer(ctx context.Context, id string) (*peer.AddrInfo, error)
+	Receive(ctx context.Context, sender peer.AddrInfo, secretHash []byte, basePath string) error
 }
 
 type receiver struct {
@@ -31,11 +31,11 @@ func (r *receiver) GetNode() node.Node {
 	return r.node
 }
 
-func (r *receiver) FindPeer(ctx context.Context, token string) (*peer.AddrInfo, error) {
-	if len(token) < 7 {
-		panic("Invalid token length.")
+func (r *receiver) FindPeer(ctx context.Context, id string) (*peer.AddrInfo, error) {
+	if len(id) < 7 {
+		panic("Invalid id length.")
 	}
-	topic := token[len(token)-7:]
+	topic := id[len(id)-7:]
 	var senderAddrInfo peer.AddrInfo
 	for {
 		if ctx.Err() != nil {
@@ -63,7 +63,7 @@ func (r *receiver) FindPeer(ctx context.Context, token string) (*peer.AddrInfo, 
 					slog.Warn("Error getting node ID.", "sender", addrInfo)
 					continue
 				}
-				if !strings.HasSuffix(nodeID.String(), token) {
+				if !strings.HasSuffix(nodeID.String(), id) {
 					slog.Warn("Found invalid sender advertising topic.", "topic", topic, "sender", addrInfo)
 					continue
 				}
@@ -83,20 +83,25 @@ func (r *receiver) FindPeer(ctx context.Context, token string) (*peer.AddrInfo, 
 	return &senderAddrInfo, nil
 }
 
-func (r *receiver) Receive(ctx context.Context, peer peer.AddrInfo, basePath string) error {
+func (r *receiver) Receive(ctx context.Context, sender peer.AddrInfo, secretHash []byte, basePath string) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	n := r.node
 	host := n.GetHost()
+	authenticated := false
+	authenticate := make(chan bool, 1)
 
 	for ctx.Err() == nil {
-		slog.Debug("Connecting to sender...", "sender", peer)
-		err := host.Connect(ctx, peer)
+		slog.Debug("Connecting to sender...", "sender", sender)
+		err := host.Connect(ctx, sender)
 		if err != nil {
 			slog.Debug("Error connecting to sender.", "error", err)
 			time.Sleep(time.Second)
 			continue
 		}
-		slog.Debug("Connected to sender.", "sender", peer)
-		host.ConnManager().Protect(peer.ID, "sender")
+		slog.Debug("Connected to sender.", "sender", sender)
+		host.ConnManager().Protect(sender.ID, "sender")
 		break
 	}
 
@@ -112,13 +117,41 @@ func (r *receiver) Receive(ctx context.Context, peer peer.AddrInfo, basePath str
 			100*time.Millisecond, math.Sqrt2, -100*time.Millisecond,
 			rand.NewSource(0))()
 		for newStreamCtx.Err() == nil {
-			stream, err := host.NewStream(newStreamCtx, peer.ID, node.Protocol)
+			stream, err := host.NewStream(newStreamCtx, sender.ID, node.Protocol)
 			if err != nil {
 				slog.Debug("Error creating stream", "error", err)
 				time.Sleep(b.Delay())
 				continue
 			}
 			b.Reset()
+
+			if !authenticated {
+				defer stream.Close()
+
+				_, err = stream.Write(secretHash)
+				if err != nil {
+					slog.Error("Error writing secret hash.", "error", err)
+					authenticate <- false
+					return
+				}
+				buffer := make([]byte, 1)
+				_, err = io.ReadFull(stream, buffer)
+				if err != nil {
+					slog.Error("Error reading authentication response.", "error", err)
+					authenticate <- false
+					return
+				}
+				if buffer[0] == 0 {
+					slog.Debug("Authentication failed.")
+					authenticate <- false
+					return
+				}
+
+				authenticated = true
+				authenticate <- true
+				continue
+			}
+
 			channelStream := transfer.NewChannelStream(stream)
 			select {
 			case streams <- *channelStream:
@@ -127,6 +160,11 @@ func (r *receiver) Receive(ctx context.Context, peer peer.AddrInfo, basePath str
 			}
 		}
 	}()
+
+	if !<-authenticate {
+		cancel()
+		return fmt.Errorf("authentication failed")
+	}
 
 	pipeReader, pipeWriter := io.Pipe()
 	done := make(chan struct{}, 1)

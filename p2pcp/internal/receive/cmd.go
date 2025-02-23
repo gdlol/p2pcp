@@ -3,6 +3,7 @@ package receive
 import (
 	"context"
 	"fmt"
+	"p2pcp/internal/auth"
 	"p2pcp/internal/node"
 
 	"github.com/libp2p/go-libp2p/core/network"
@@ -10,7 +11,7 @@ import (
 	"moul.io/drunken-bishop/drunkenbishop"
 )
 
-func Receive(ctx context.Context, topic string, basePath string) error {
+func Receive(ctx context.Context, id string, secret string, basePath string) error {
 	ctx = network.WithAllowLimitedConn(ctx, "hole-punching")
 
 	n, err := node.NewNode(ctx)
@@ -26,7 +27,7 @@ func Receive(ctx context.Context, topic string, basePath string) error {
 	receiver := NewReceiver(n)
 
 	fmt.Println("Finding sender...")
-	peer, err := receiver.FindPeer(ctx, topic)
+	peer, err := receiver.FindPeer(ctx, id)
 	if err != nil {
 		return fmt.Errorf("error finding peer: %w", err)
 	}
@@ -35,18 +36,21 @@ func Receive(ctx context.Context, topic string, basePath string) error {
 	if err != nil {
 		return fmt.Errorf("error getting node ID for %v: %w", peer.ID, err)
 	}
-	fmt.Println("Sender ID:", nodeID.String())
-	room := drunkenbishop.FromBytes(nodeID.Bytes())
-	fmt.Println(room)
-	fmt.Println("Are you sure you want to connect to this peer? [y/N]")
-	var confirm string
-	fmt.Scanln(&confirm)
-	if confirm != "y" {
-		return nil
+	if id != nodeID.String() {
+		fmt.Println("Sender ID:", nodeID.String())
+		room := drunkenbishop.FromBytes(nodeID.Bytes())
+		fmt.Println(room)
+		fmt.Println("Are you sure you want to connect to this peer? [y/N]")
+		var confirm string
+		fmt.Scanln(&confirm)
+		if confirm != "y" {
+			return nil
+		}
 	}
 
 	fmt.Println("Receiving...")
-	err = receiver.Receive(ctx, *peer, basePath)
+	secretHash := auth.ComputeHash([]byte(secret))
+	err = receiver.Receive(ctx, *peer, secretHash, basePath)
 	if err == nil {
 		fmt.Println("Done.")
 	}

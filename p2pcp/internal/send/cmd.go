@@ -2,8 +2,10 @@ package send
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"log/slog"
+	"p2pcp/internal/auth"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/network"
@@ -11,7 +13,7 @@ import (
 	"moul.io/drunken-bishop/drunkenbishop"
 )
 
-func Send(ctx context.Context, path string) error {
+func Send(ctx context.Context, path string, strict bool) error {
 	ctx = network.WithAllowLimitedConn(ctx, "hole-punching")
 
 	fmt.Println("Preparing sender...")
@@ -22,7 +24,6 @@ func Send(ctx context.Context, path string) error {
 	node := sender.GetNode()
 	defer node.Close()
 
-	id := node.ID()
 	topic := sender.GetAdvertiseTopic()
 	err = node.StartMdns(func(ai peer.AddrInfo) {
 		go func() {
@@ -43,15 +44,34 @@ func Send(ctx context.Context, path string) error {
 		return fmt.Errorf("error starting mDNS service: %w", err)
 	}
 
-	fmt.Println("Node ID:", id.String())
-	room := drunkenbishop.FromBytes(id.Bytes())
-	fmt.Println(room)
+	var secret string
+	if !strict {
+		secret, err = auth.GetPin()
+		if err != nil {
+			return fmt.Errorf("error generating pin: %w", err)
+		}
+	} else {
+		secret = rand.Text()
+	}
 
+	if !strict {
+		fmt.Println("Node ID:", node.ID())
+		room := drunkenbishop.FromBytes(node.ID().Bytes())
+		fmt.Println(room)
+	}
+
+	var id string
+	if strict {
+		id = node.ID().String()
+	} else {
+		id = topic
+	}
 	fmt.Println("Please run the following command on receiver side:")
-	fmt.Println("p2pcp", "receive", topic)
+	fmt.Println("p2pcp", "receive", id, secret)
 
 	fmt.Println("Sending...")
-	err = sender.Send(ctx, path)
+	secretHash := auth.ComputeHash([]byte(secret))
+	err = sender.Send(ctx, secretHash, path, strict)
 	if err == nil {
 		fmt.Println("Done.")
 	}

@@ -15,6 +15,7 @@ var SendCmd = &cobra.Command{
 	Short: "Sends the specified file/directory to remote peer.",
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := cobra.MaximumNArgs(1)(cmd, args); err != nil {
+			fmt.Fprintln(os.Stderr, err)
 			cmd.Usage()
 			os.Exit(1)
 		}
@@ -38,9 +39,14 @@ var SendCmd = &cobra.Command{
 				return err
 			}
 		}
+		strict, _ := cmd.Flags().GetBool("strict")
 
 		slog.Debug(fmt.Sprintf("Sending %s...", path))
 
-		return send.Send(ctx, path)
+		return send.Send(ctx, path, strict)
 	},
+}
+
+func init() {
+	SendCmd.Flags().Bool("strict", false, "Use strict mode, this will generate a long token for authentication")
 }

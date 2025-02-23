@@ -2,12 +2,12 @@ package node
 
 import (
 	"context"
-	"crypto"
 	"crypto/rand"
 	"fmt"
 	"io"
 	"log/slog"
 	mathRand "math/rand"
+	"p2pcp/internal/auth"
 	"slices"
 	"time"
 
@@ -161,15 +161,6 @@ func (n *node) Close() {
 	n.host.Close()
 }
 
-func sha256(input []byte) ([]byte, error) {
-	hash := crypto.SHA256.New()
-	_, err := hash.Write(input)
-	if err != nil {
-		return nil, err
-	}
-	return hash.Sum(nil), nil
-}
-
 // Gets a SHA-256 hashed ID, as peerID.String() may or may not have been hashed.
 func GetNodeID(peerID peer.ID) (NodeID, error) {
 	pubKey, err := peerID.ExtractPublicKey()
@@ -180,10 +171,7 @@ func GetNodeID(peerID peer.ID) (NodeID, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting raw public key: %w", err)
 	}
-	hashValue, err := sha256(keyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("error hashing public key: %w", err)
-	}
+	hashValue := auth.ComputeHash(keyBytes)
 	return &nodeID{value: hashValue}, nil
 }
 
