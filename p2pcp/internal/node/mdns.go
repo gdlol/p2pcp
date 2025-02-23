@@ -40,6 +40,9 @@ func (m *mdnsService) Start() error {
 }
 
 func (notifee *mdnsNotifee) HandlePeerFound(addrInfo peer.AddrInfo) {
+	if notifee.ctx.Err() != nil {
+		return
+	}
 	slog.Debug("mdns: found new peer.", "peer", addrInfo.ID)
 	err := notifee.host.Connect(notifee.ctx, addrInfo)
 	if err != nil {

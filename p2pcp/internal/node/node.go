@@ -3,9 +3,12 @@ package node
 import (
 	"context"
 	"crypto"
+	"crypto/rand"
 	"fmt"
 	"io"
 	"log/slog"
+	mathRand "math/rand"
+	"slices"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
@@ -13,10 +16,16 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/p2p/discovery/backoff"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
+	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
+	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	b58 "github.com/mr-tron/base58/base58"
+	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 )
+
+const Protocol protocol.ID = "/p2pcp/transfer/0.1.0"
 
 type NodeID interface {
 	String() string
@@ -30,7 +39,6 @@ type Node interface {
 	AdvertiseLAN(ctx context.Context, topic string) error
 	AdvertiseWAN(ctx context.Context, topic string) error
 	FindPeers(ctx context.Context, topic string) (<-chan peer.AddrInfo, error)
-	GetProtocol() protocol.ID
 	Close()
 }
 
@@ -39,11 +47,13 @@ type nodeID struct {
 }
 
 type node struct {
-	id          NodeID
-	host        host.Host
-	dht         *dual.DHT
-	mdnsService MdnsService
-	protocol    protocol.ID
+	id              NodeID
+	host            host.Host
+	dht             *dual.DHT
+	mdnsService     MdnsService
+	protocol        protocol.ID
+	peerSource      chan peer.AddrInfo
+	peerSourceLimit chan int
 }
 
 func (k *nodeID) String() string {
@@ -84,57 +94,71 @@ func (n *node) FindPeers(ctx context.Context, topic string) (<-chan peer.AddrInf
 	return discovery.FindPeers(ctx, topic)
 }
 
-func (n *node) GetProtocol() protocol.ID {
-	return n.protocol
+func startAutoRelay(ctx context.Context, n node) {
+	backoffStrategy := backoff.NewExponentialBackoff(
+		time.Second, 6*time.Second, backoff.NoJitter,
+		time.Second, 2, 0,
+		mathRand.NewSource(0))
+
+	for ctx.Err() == nil {
+		num := <-n.peerSourceLimit
+
+		// Get random peers from DHT.
+		b := backoffStrategy()
+		var peers []peer.ID
+		var err error
+		for ctx.Err() == nil {
+			if n.dht.WAN.RoutingTable().Size() == 0 {
+				time.Sleep(time.Second)
+				continue
+			}
+			slog.Debug("Getting peers from DHT for auto relay...")
+			peers, err = n.dht.WAN.GetClosestPeers(ctx, rand.Text())
+			if err != nil {
+				if ctx.Err() == nil {
+					slog.Debug("Error getting peers from DHT for auto relay.", "error", err)
+				} else {
+					return
+				}
+			}
+			if len(peers) > 0 {
+				slog.Debug(fmt.Sprintf("Feeding %d peers from DHT for auto relay.", len(peers)))
+				break
+			} else {
+				time.Sleep(b.Delay())
+			}
+		}
+
+		for _, peerID := range peers {
+			addrs := n.host.Peerstore().Addrs(peerID)
+			addrs = slices.DeleteFunc(addrs, func(addr multiaddr.Multiaddr) bool {
+				return !manet.IsPublicAddr(addr)
+			})
+			if len(addrs) == 0 {
+				continue
+			}
+			addrInfo := peer.AddrInfo{
+				ID:    peerID,
+				Addrs: addrs,
+			}
+			if num > 0 {
+				select {
+				case n.peerSource <- addrInfo:
+					num--
+				case <-ctx.Done():
+					return
+				}
+			} else {
+				break
+			}
+		}
+	}
 }
 
 func (n *node) Close() {
 	n.mdnsService.Close()
 	n.dht.Close()
 	n.host.Close()
-}
-
-// Get peers from DHT for auto relay.
-func getPeerSource(getNode <-chan node) autorelay.PeerSource {
-	return func(ctx context.Context, num int) <-chan peer.AddrInfo {
-		peerSource := make(chan peer.AddrInfo, num)
-		go func() {
-			defer close(peerSource)
-
-			node := <-getNode
-			for {
-				slog.Debug("getPeerSource: Getting closest peers...")
-				peers, err := node.dht.WAN.GetClosestPeers(ctx, node.id.String())
-				if err != nil {
-					slog.Warn("Error getting closest peers.", "error", err)
-					continue
-				}
-				slog.Debug("getPeerSource: Got closest peers.", "len(peers)", len(peers))
-				for _, peerID := range peers {
-					addrs := node.host.Peerstore().Addrs(peerID)
-					if len(addrs) == 0 {
-						continue
-					}
-					addrInfo := peer.AddrInfo{
-						ID:    peerID,
-						Addrs: addrs,
-					}
-					if num > 0 {
-						select {
-						case peerSource <- addrInfo:
-							num--
-						case <-ctx.Done():
-							return
-						}
-					} else {
-						return
-					}
-				}
-				time.Sleep(time.Second)
-			}
-		}()
-		return peerSource
-	}
 }
 
 func sha256(input []byte) ([]byte, error) {
@@ -171,12 +195,28 @@ func NewNode(ctx context.Context, options ...libp2p.Option) (Node, error) {
 		}
 	}
 
-	resultChan := make(chan node)
-	peerSource := getPeerSource(resultChan)
+	peerSource := make(chan peer.AddrInfo)
+	peerSourceLimit := make(chan int, 1)
+
+	listenAddresses := []string{
+		"/ip4/0.0.0.0/tcp/0",
+		"/ip4/0.0.0.0/udp/0/quic-v1",
+		// "/ip6/::/tcp/0",
+		// "/ip6/::/udp/0/quic-v1",
+	}
 	options = append([]libp2p.Option{
 		libp2p.EnableAutoNATv2(),
 		libp2p.EnableHolePunching(),
-		libp2p.EnableAutoRelayWithPeerSource(peerSource),
+		libp2p.EnableAutoRelayWithPeerSource(func(ctx context.Context, num int) <-chan peer.AddrInfo {
+			peerSourceLimit <- num
+			return peerSource
+		}),
+		libp2p.ChainOptions(
+			libp2p.Transport(tcp.NewTCPTransport),
+			libp2p.Transport(quic.NewTransport),
+		),
+		libp2p.ListenAddrStrings(listenAddresses...),
+		libp2p.ForceReachabilityPrivate(),
 	}, options...)
 
 	host, err := libp2p.New(options...)
@@ -200,19 +240,17 @@ func NewNode(ctx context.Context, options ...libp2p.Option) (Node, error) {
 	defer closeIfError(mdnsService)
 
 	node := &node{
-		id:          id,
-		host:        host,
-		dht:         dht,
-		mdnsService: mdnsService,
-		protocol:    "/p2pcp/transfer/0.1.0",
+		id:              id,
+		host:            host,
+		dht:             dht,
+		mdnsService:     mdnsService,
+		protocol:        Protocol,
+		peerSource:      peerSource,
+		peerSourceLimit: peerSourceLimit,
 	}
 
-	go func() {
-		select {
-		case resultChan <- *node:
-		case <-ctx.Done():
-		}
-	}()
+	go startAutoRelay(ctx, *node)
+
 	success = true
 	return node, nil
 }

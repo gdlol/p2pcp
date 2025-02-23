@@ -1,29 +1,26 @@
 package send
 
 import (
-	"archive/tar"
 	"context"
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"p2pcp/internal/node"
-	"path/filepath"
+	"p2pcp/internal/transfer"
 	"sync"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
-	"github.com/pkg/errors"
-	progress "github.com/schollz/progressbar/v3"
 )
 
 type Sender interface {
 	GetNode() node.Node
 	GetAdvertiseTopic() string
 	AdvertiseWAN(ctx context.Context)
-	Send(path string) error
+	Send(ctx context.Context, path string) error
+	Close()
 }
 
 type sender struct {
@@ -39,12 +36,16 @@ func (s *sender) GetAdvertiseTopic() string {
 	return id[len(id)-7:]
 }
 
+func (s *sender) Close() {
+	s.node.Close()
+}
+
 func (s *sender) AdvertiseWAN(ctx context.Context) {
 	node := s.node
 	topic := s.GetAdvertiseTopic()
 
 	// Advertise self to DHT until success/cancel.
-	for {
+	for ctx.Err() == nil {
 		time.Sleep(3 * time.Second)
 		slog.Debug("Advertising to WAN DHT...", "topic", topic)
 		err := node.AdvertiseWAN(ctx, topic)
@@ -60,113 +61,80 @@ func (s *sender) AdvertiseWAN(ctx context.Context) {
 	}
 }
 
-// Builds the path structure for the tar archive - this will be the structure as it is received.
-func relativePath(basePath string, baseIsDir bool, targetPath string) (string, error) {
-	if baseIsDir {
-		rel, err := filepath.Rel(basePath, targetPath)
-		if err != nil {
-			return "", err
+func (s *sender) Send(ctx context.Context, path string) error {
+	n := s.node
+	host := n.GetHost()
+
+	streams := make(chan transfer.ChannelStream)
+	channel := transfer.NewChannel(ctx, streams, transfer.DefaultPayloadSize)
+	defer channel.Close()
+
+	mutex := sync.Mutex{}
+	host.SetStreamHandler(node.Protocol, func(stream network.Stream) {
+		slog.Debug("New stream received.")
+		mutex.Lock()
+		defer mutex.Unlock()
+		channelStream := transfer.NewChannelStream(stream)
+		select {
+		case streams <- *channelStream:
+			<-channelStream.Done
+		case <-ctx.Done():
 		}
-		return filepath.Clean(filepath.Join(filepath.Base(basePath), rel)), nil
-	} else {
-		return filepath.Base(basePath), nil
-	}
-}
-
-func transfer(s network.Stream, root string) error {
-	rootInfo, err := os.Stat(root)
-	if err != nil {
-		return err
-	}
-
-	writer := tar.NewWriter(s)
-	defer writer.Close()
-	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		slog.Debug("Preparing file/dir for transmission.", "path", path)
-		if err != nil {
-			slog.Debug("Error walking file.", "path", path, "err", err)
-			return err
-		}
-
-		header, err := tar.FileInfoHeader(info, "")
-		if err != nil {
-			return errors.Wrapf(err, "error writing tar file info header %s: %s.", path, err)
-		}
-
-		// To preserve directory structure in the tar ball.
-		header.Name, err = relativePath(root, rootInfo.IsDir(), path)
-		if err != nil {
-			return errors.Wrapf(err, "error building relative path: %s (IsDir: %v) %s", root, rootInfo.IsDir(), path)
-		}
-
-		if err = writer.WriteHeader(header); err != nil {
-			return errors.Wrap(err, "error writing tar header")
-		}
-
-		// Continue as all information was written above with WriteHeader.
-		if info.IsDir() {
-			return nil
-		}
-
-		f, err := os.Open(path)
-		if err != nil {
-			return errors.Wrapf(err, "error opening file for taring at: %s", path)
-		}
-		defer f.Close()
-
-		bar := progress.DefaultBytes(info.Size(), info.Name())
-		if _, err = io.Copy(io.MultiWriter(writer, bar), f); err != nil {
-			return err
-		}
-
-		return nil
 	})
-	if err != nil {
-		return err
-	}
+	defer host.RemoveStreamHandler(node.Protocol)
 
-	if err = writer.Close(); err != nil {
-		slog.Warn("Error closing tar ball", "err", err)
-	}
-
-	return nil
-}
-
-func (s *sender) Send(path string) error {
-	node := s.node
-	host := node.GetHost()
-
-	result := make(chan error)
-	defer close(result)
-	host.SetStreamHandler(node.GetProtocol(), func(s network.Stream) {
-		defer s.Close()
-		result <- transfer(s, path)
-		if result == nil {
-			buffer := make([]byte, 1024)
-			for {
-				_, err := s.Read(buffer)
+	pipeReader, pipeWriter := io.Pipe()
+	done := make(chan struct{}, 1)
+	go func() {
+		defer pipeReader.Close()
+		buffer := make([]byte, transfer.DefaultPayloadSize)
+		for ctx.Err() == nil {
+			n, err := pipeReader.Read(buffer)
+			if err != nil {
+				if err != io.EOF {
+					slog.Error("Error reading from pipe.", "error", err)
+				}
+				break
+			}
+			if n > 0 {
+				_, err = channel.Write(buffer[:n])
 				if err != nil {
-					if err == io.EOF {
-						slog.Info("Transfer complete.")
-					} else {
-						slog.Warn("Error reading from stream.", "error", err)
-					}
+					slog.Error("Error writing to channel.", "error", err)
 					break
 				}
 			}
+			if err == io.EOF {
+				slog.Debug("Read EOF from pipe.")
+				break
+			}
 		}
-	})
-	defer host.RemoveStreamHandler(node.GetProtocol())
+		done <- struct{}{}
+	}()
 
-	return <-result
+	err := writeTar(pipeWriter, path)
+	if err != nil {
+		return fmt.Errorf("error sending path %s: %w", path, err)
+	}
+
+	pipeWriter.Close()
+	<-done
+	if err = channel.Close(); err != nil {
+		slog.Debug("Error closing channel.", "error", err)
+	}
+	slog.Info("Transfer complete.")
+	return nil
 }
 
-func NewSender(node node.Node) Sender {
-	return &sender{node: node}
+func NewSender(ctx context.Context, options ...libp2p.Option) (Sender, error) {
+	node, err := node.NewNode(ctx, options...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating sender: %w", err)
+	}
+	return &sender{node: node}, nil
 }
 
 // Create new sender every 6 seconds. until 1 successfully advertised itself to WAN DHT.
-func NewAdvertisedSender(ctx context.Context) (Sender, error) {
+func NewAdvertisedSender(ctx context.Context, options ...libp2p.Option) (Sender, error) {
 	groupCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -184,17 +152,16 @@ func NewAdvertisedSender(ctx context.Context) (Sender, error) {
 			return groupCtx.Err()
 		}
 
-		n, err := node.NewNode(ctx, libp2p.Peerstore(ps))
+		sender, err := NewSender(ctx, append([]libp2p.Option{libp2p.Peerstore(ps)}, options...)...)
 		if err != nil {
 			return err
 		}
 		success := false
 		defer func() {
 			if !success {
-				n.Close()
+				sender.Close()
 			}
 		}()
-		sender := NewSender(n)
 
 		timeoutCtx, cancel := context.WithTimeout(groupCtx, time.Minute)
 		defer cancel()
@@ -231,5 +198,13 @@ func NewAdvertisedSender(ctx context.Context) (Sender, error) {
 	result := <-resultChan
 	cancel()
 	wg.Wait()
+
+	go func() {
+		for ctx.Err() == nil {
+			time.Sleep(6 * time.Second)
+			result.GetNode().AdvertiseWAN(ctx, result.GetAdvertiseTopic())
+		}
+	}()
+
 	return result, nil
 }
