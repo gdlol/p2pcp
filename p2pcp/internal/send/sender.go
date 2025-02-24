@@ -69,104 +69,84 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string, stric
 
 	n := s.node
 	host := n.GetHost()
-	var authenticatedPeer peer.ID = ""
-	authenticate := make(chan bool, 1)
 
-	streams := make(chan transfer.ChannelStream)
-	channel := transfer.NewChannel(ctx, streams, transfer.DefaultPayloadSize)
-	defer channel.Close()
-
-	mutex := sync.Mutex{}
-	host.SetStreamHandler(node.Protocol, func(stream network.Stream) {
-		slog.Debug("New stream received.")
-		if authenticatedPeer.Validate() == nil && stream.Conn().RemotePeer() != authenticatedPeer {
-			slog.Warn("Received request from other peer after authentication.", "peer", stream.Conn().RemotePeer())
-			return
-		}
-
-		mutex.Lock()
-		defer mutex.Unlock()
-		if authenticatedPeer.Validate() != nil {
-			defer stream.Close()
-
-			buffer := make([]byte, len(secretHash))
-			_, err := io.ReadFull(stream, buffer)
+	var authenticatedPeer *peer.ID = nil
+	authenticate := make(chan *peer.ID, 1)
+	host.SetStreamHandler(auth.Protocol, func(stream network.Stream) {
+		slog.Debug("Received new auth stream.")
+		remotePeer := stream.Conn().RemotePeer()
+		if authenticatedPeer == nil {
+			success, err := auth.HandleAuthenticate(stream, secretHash)
 			if err != nil {
-				slog.Error("Error reading secret hash.", "error", err)
-				stream.Write([]byte{0})
-				if !strict {
-					authenticate <- false
-				}
+				slog.Warn("Error authenticating receiver.", "error", err)
+			}
+			if success == nil {
 				return
 			}
-			if !auth.VerifyHash(buffer, secretHash) {
-				slog.Warn("Invalid secret hash received.")
-				stream.Write([]byte{0})
-				if !strict {
-					authenticate <- false
+			if *success {
+				if err == nil {
+					select {
+					case authenticate <- &remotePeer:
+					default:
+					}
 				}
-				return
+			} else {
+				if !strict {
+					select {
+					case authenticate <- nil: // Causes abort if not in strict mode.
+					default:
+					}
+				}
 			}
-
-			stream.Write([]byte{1})
-			authenticatedPeer = stream.Conn().RemotePeer()
-			authenticate <- true
-			return
-		}
-
-		channelStream := transfer.NewChannelStream(stream)
-		select {
-		case streams <- *channelStream:
-			<-channelStream.Done
-		case <-ctx.Done():
+		} else {
+			slog.Warn("Received extra auth stream.")
+			stream.Close()
 		}
 	})
-	defer host.RemoveStreamHandler(node.Protocol)
 
-	if !<-authenticate {
+	authenticatedPeer = <-authenticate
+	host.RemoveStreamHandler(auth.Protocol)
+	if authenticatedPeer == nil {
 		cancel()
 		return fmt.Errorf("failed to authenticate receiver")
 	}
-	slog.Info("Authenticated receiver.", "id", authenticatedPeer)
+	slog.Info("Authenticated receiver.", "peer", authenticatedPeer)
 
-	pipeReader, pipeWriter := io.Pipe()
-	done := make(chan struct{}, 1)
-	go func() {
-		defer pipeReader.Close()
-		buffer := make([]byte, transfer.DefaultPayloadSize)
-		for ctx.Err() == nil {
-			n, err := pipeReader.Read(buffer)
-			if err != nil {
-				if err != io.EOF {
-					slog.Error("Error reading from pipe.", "error", err)
-				}
-				break
-			}
-			if n > 0 {
-				_, err = channel.Write(buffer[:n])
-				if err != nil {
-					slog.Error("Error writing to channel.", "error", err)
-					break
-				}
-			}
-			if err == io.EOF {
-				slog.Debug("Read EOF from pipe.")
-				break
+	streams := make(chan io.ReadWriteCloser, 1)
+	channel := transfer.NewChannel(ctx, func() (io.ReadWriteCloser, error) {
+		select {
+		case stream := <-streams:
+			return stream, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}, transfer.DefaultPayloadSize)
+	defer func() {
+		if err := channel.Close(); err != nil {
+			slog.Debug("Error closing channel.", "error", err)
+		}
+	}()
+	host.SetStreamHandler(transfer.Protocol, func(stream network.Stream) {
+		slog.Debug("Received new transfer stream.")
+		remotePeer := stream.Conn().RemotePeer()
+		if authenticatedPeer == nil || *authenticatedPeer != remotePeer {
+			slog.Warn("Unauthorized transfer stream.")
+			stream.Close()
+		} else {
+			select {
+			case streams <- stream:
+			case <-ctx.Done():
+				stream.Close()
 			}
 		}
-		done <- struct{}{}
-	}()
+	})
+	defer host.RemoveStreamHandler(transfer.Protocol)
 
-	err := writeTar(pipeWriter, path)
+	err := writeTar(channel, path)
 	if err != nil {
 		return fmt.Errorf("error sending path %s: %w", path, err)
 	}
 
-	pipeWriter.Close()
-	<-done
-	if err = channel.Close(); err != nil {
-		slog.Debug("Error closing channel.", "error", err)
-	}
 	slog.Info("Transfer complete.")
 	return nil
 }
@@ -223,7 +203,7 @@ func NewAdvertisedSender(ctx context.Context, options ...libp2p.Option) (Sender,
 
 	go func() {
 		for i := 0; ; i++ {
-			if groupCtx.Err() == context.Canceled {
+			if groupCtx.Err() != nil {
 				return
 			}
 			// Create 3 nodes at once at the beginning.

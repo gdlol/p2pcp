@@ -15,17 +15,12 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/p2p/discovery/backoff"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
-	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	b58 "github.com/mr-tron/base58/base58"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 )
-
-const Protocol protocol.ID = "/p2pcp/transfer/0.1.0"
 
 type NodeID interface {
 	String() string
@@ -51,7 +46,6 @@ type node struct {
 	host            host.Host
 	dht             *dual.DHT
 	mdnsService     MdnsService
-	protocol        protocol.ID
 	peerSource      chan peer.AddrInfo
 	peerSourceLimit chan int
 }
@@ -94,7 +88,7 @@ func (n *node) FindPeers(ctx context.Context, topic string) (<-chan peer.AddrInf
 	return discovery.FindPeers(ctx, topic)
 }
 
-func startAutoRelay(ctx context.Context, n node) {
+func findPeersForAutoRelay(ctx context.Context, n node) {
 	backoffStrategy := backoff.NewExponentialBackoff(
 		time.Second, 6*time.Second, backoff.NoJitter,
 		time.Second, 2, 0,
@@ -115,11 +109,10 @@ func startAutoRelay(ctx context.Context, n node) {
 			slog.Debug("Getting peers from DHT for auto relay...")
 			peers, err = n.dht.WAN.GetClosestPeers(ctx, rand.Text())
 			if err != nil {
-				if ctx.Err() == nil {
-					slog.Debug("Error getting peers from DHT for auto relay.", "error", err)
-				} else {
+				if ctx.Err() != nil {
 					return
 				}
+				slog.Debug("Error getting peers from DHT for auto relay.", "error", err)
 			}
 			if len(peers) > 0 {
 				slog.Debug(fmt.Sprintf("Feeding %d peers from DHT for auto relay.", len(peers)))
@@ -186,12 +179,12 @@ func NewNode(ctx context.Context, options ...libp2p.Option) (Node, error) {
 	peerSource := make(chan peer.AddrInfo)
 	peerSourceLimit := make(chan int, 1)
 
-	listenAddresses := []string{
-		"/ip4/0.0.0.0/tcp/0",
-		"/ip4/0.0.0.0/udp/0/quic-v1",
-		// "/ip6/::/tcp/0",
-		// "/ip6/::/udp/0/quic-v1",
-	}
+	// listenAddresses := []string{
+	// 	"/ip4/0.0.0.0/tcp/0",
+	// 	"/ip4/0.0.0.0/udp/0/quic-v1",
+	// 	"/ip6/::/tcp/0",
+	// 	"/ip6/::/udp/0/quic-v1",
+	// }
 	options = append([]libp2p.Option{
 		libp2p.EnableAutoNATv2(),
 		libp2p.EnableHolePunching(),
@@ -199,12 +192,12 @@ func NewNode(ctx context.Context, options ...libp2p.Option) (Node, error) {
 			peerSourceLimit <- num
 			return peerSource
 		}),
-		libp2p.ChainOptions(
-			libp2p.Transport(tcp.NewTCPTransport),
-			libp2p.Transport(quic.NewTransport),
-		),
-		libp2p.ListenAddrStrings(listenAddresses...),
-		libp2p.ForceReachabilityPrivate(),
+		// libp2p.ChainOptions(
+		// 	libp2p.Transport(tcp.NewTCPTransport),
+		// 	libp2p.Transport(quic.NewTransport),
+		// ),
+		// libp2p.ListenAddrStrings(listenAddresses...),
+		libp2p.ForceReachabilityPrivate(), // For auto relay to start
 	}, options...)
 
 	host, err := libp2p.New(options...)
@@ -232,12 +225,11 @@ func NewNode(ctx context.Context, options ...libp2p.Option) (Node, error) {
 		host:            host,
 		dht:             dht,
 		mdnsService:     mdnsService,
-		protocol:        Protocol,
 		peerSource:      peerSource,
 		peerSourceLimit: peerSourceLimit,
 	}
 
-	go startAutoRelay(ctx, *node)
+	go findPeersForAutoRelay(ctx, *node)
 
 	success = true
 	return node, nil

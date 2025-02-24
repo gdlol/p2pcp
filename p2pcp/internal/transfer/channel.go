@@ -6,48 +6,84 @@ import (
 	"io"
 	"log/slog"
 	"time"
+
+	"github.com/libp2p/go-libp2p/core/protocol"
 )
+
+const Protocol protocol.ID = "/p2pcp/transfer/0.1.0"
 
 // Transfer data over unstable streams.
 type Channel io.ReadWriteCloser
 
 const DefaultPayloadSize = 8192
 
+// Buffer large enough to hold payload returned by readPacket.
+type readBuffer struct {
+	buffer []byte
+	offset int
+	length int
+}
+
+func newReadBuffer(size int) *readBuffer {
+	return &readBuffer{
+		buffer: make([]byte, size),
+		offset: 0,
+		length: 0,
+	}
+}
+
+func (r *readBuffer) read(p []byte) int {
+	buffer := r.buffer[r.offset:r.length]
+	n := copy(p, buffer)
+	r.offset += n
+	return n
+}
+
+func (r *readBuffer) isEmpty() bool {
+	return r.offset >= r.length
+}
+
+func (r *readBuffer) reset() {
+	r.offset = 0
+	r.length = 0
+}
+
+type GetStream func() (io.ReadWriteCloser, error)
+
 type channel struct {
-	logger        *slog.Logger
 	ctx           context.Context
-	streams       chan ChannelStream
+	logger        *slog.Logger
+	getStream     GetStream
 	payloadSize   int
-	currentStream *ChannelStream
+	currentStream io.ReadWriteCloser
 	readSeq       uint64
 	writeSeq      uint64
+	readBuffer    *readBuffer
 	readClosed    bool
 	writeClosed   bool
 }
 
-func (c *channel) getStream() (*ChannelStream, error) {
+func (c *channel) getCurrentStream() (io.ReadWriteCloser, error) {
 	if c.currentStream == nil {
-		select {
-		case <-c.ctx.Done():
-			return nil, c.ctx.Err()
-		case stream := <-c.streams:
-			c.currentStream = &stream
+		stream, err := c.getStream()
+		if err != nil {
+			return nil, err
 		}
+		c.currentStream = stream
 	}
-
 	return c.currentStream, nil
 }
 
 func (c *channel) closeStream() {
 	if c.currentStream != nil {
-		(*c.currentStream).Close()
+		c.currentStream.Close()
 		c.currentStream = nil
 	}
 }
 
 func (c *channel) writeAck(seq uint64) error {
 	packet := newAckPacket(seq)
-	stream, err := c.getStream()
+	stream, err := c.getCurrentStream()
 	if err != nil {
 		return err
 	}
@@ -59,15 +95,12 @@ func (c *channel) writeAck(seq uint64) error {
 	return err
 }
 
-func (c *channel) Read(p []byte) (n int, err error) {
-	if len(p) < c.payloadSize {
-		return 0, io.ErrShortBuffer
-	}
+func (c *channel) read(p []byte) (n int, err error) {
 	if c.readClosed {
 		return 0, io.EOF
 	}
 	for c.ctx.Err() == nil {
-		stream, err := c.getStream()
+		stream, err := c.getCurrentStream()
 		if err != nil {
 			return 0, err
 		}
@@ -115,15 +148,24 @@ func (c *channel) Read(p []byte) (n int, err error) {
 	return 0, c.ctx.Err()
 }
 
-func (c *channel) Write(p []byte) (n int, err error) {
+func (c *channel) Read(p []byte) (n int, err error) {
+	if c.readBuffer.isEmpty() {
+		c.readBuffer.reset()
+		n, err := c.read(c.readBuffer.buffer)
+		if err != nil {
+			return n, err
+		}
+		c.readBuffer.length = n
+	}
+	return c.readBuffer.read(p), nil
+}
+
+func (c *channel) write(p []byte) (n int, err error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
-	if len(p) > c.payloadSize {
-		return 0, fmt.Errorf("payload too large: %d > %d", len(p), c.payloadSize)
-	}
 	for c.ctx.Err() == nil {
-		stream, err := c.getStream()
+		stream, err := c.getCurrentStream()
 		if err != nil {
 			return 0, err
 		}
@@ -159,7 +201,24 @@ func (c *channel) Write(p []byte) (n int, err error) {
 	return 0, c.ctx.Err()
 }
 
-func (c *channel) Close() error {
+func (c *channel) Write(p []byte) (n int, err error) {
+	n = 0
+	for len(p) > 0 {
+		buffer := p
+		if len(buffer) > c.payloadSize {
+			buffer = buffer[:c.payloadSize]
+		}
+		m, err := c.write(buffer)
+		if err != nil {
+			return n, err
+		}
+		n += m
+		p = p[m:]
+	}
+	return n, nil
+}
+
+func (c *channel) close() error {
 	if c.writeClosed && c.readClosed {
 		return nil
 	}
@@ -173,7 +232,7 @@ func (c *channel) Close() error {
 	buffer := make([]byte, c.payloadSize)
 
 	for ctx.Err() == nil {
-		stream, err := c.getStream()
+		stream, err := c.getCurrentStream()
 		if err != nil {
 			return err
 		}
@@ -228,11 +287,20 @@ func (c *channel) Close() error {
 	return ctx.Err()
 }
 
-func NewChannel(ctx context.Context, streams chan ChannelStream, payloadSize int) Channel {
+func (c *channel) Close() error {
+	err := c.close()
+	if err != nil {
+		c.logger.Debug("Error closing channel.", "error", err)
+	}
+	return err
+}
+
+func NewChannel(ctx context.Context, getStream GetStream, payloadSize int) Channel {
 	return &channel{
 		ctx:         ctx,
-		streams:     streams,
-		payloadSize: payloadSize,
 		logger:      slog.With("source", "p2pcp/transfer/channel", "payloadSize", payloadSize),
+		getStream:   getStream,
+		payloadSize: payloadSize,
+		readBuffer:  newReadBuffer(payloadSize),
 	}
 }

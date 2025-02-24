@@ -34,7 +34,8 @@ func handleFile(header *tar.Header, reader io.Reader, basePath string) error {
 	return nil
 }
 
-func readTar(reader *tar.Reader, basePath string) error {
+func readTar(r io.Reader, basePath string) error {
+	reader := tar.NewReader(r)
 	for {
 		header, err := reader.Next()
 		if err == io.EOF {
@@ -46,6 +47,13 @@ func readTar(reader *tar.Reader, basePath string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// Drain padding
+	buffer := make([]byte, 8192)
+	_, err := r.Read(buffer)
+	if err != nil && err != io.EOF {
+		return err
 	}
 	return nil
 }
