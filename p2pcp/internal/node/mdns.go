@@ -9,34 +9,9 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 )
 
-type HandleMdnsPeerFound func(peer.AddrInfo)
-
-type MdnsService interface {
-	mdns.Service
-	SetHandler(handlePeerFound HandleMdnsPeerFound)
-}
-
 type mdnsNotifee struct {
-	host            host.Host
-	ctx             context.Context
-	handlePeerFound HandleMdnsPeerFound
-}
-
-type mdnsService struct {
-	service mdns.Service
-	notifee *mdnsNotifee
-}
-
-func (m *mdnsService) Close() error {
-	return m.service.Close()
-}
-
-func (m *mdnsService) SetHandler(handlePeerFound HandleMdnsPeerFound) {
-	m.notifee.handlePeerFound = handlePeerFound
-}
-
-func (m *mdnsService) Start() error {
-	return m.service.Start()
+	host host.Host
+	ctx  context.Context
 }
 
 func (notifee *mdnsNotifee) HandlePeerFound(addrInfo peer.AddrInfo) {
@@ -50,18 +25,12 @@ func (notifee *mdnsNotifee) HandlePeerFound(addrInfo peer.AddrInfo) {
 		return
 	}
 	notifee.host.ConnManager().Protect(addrInfo.ID, "mdns")
-	notifee.handlePeerFound(addrInfo)
 }
 
-func createMdnsService(ctx context.Context, host host.Host, serviceName string) MdnsService {
+func createMdnsService(ctx context.Context, host host.Host, serviceName string) mdns.Service {
 	notifee := mdnsNotifee{
-		host:            host,
-		ctx:             ctx,
-		handlePeerFound: func(ai peer.AddrInfo) {},
+		host: host,
+		ctx:  ctx,
 	}
-	service := mdns.NewMdnsService(host, serviceName, &notifee)
-	return &mdnsService{
-		service: service,
-		notifee: &notifee,
-	}
+	return mdns.NewMdnsService(host, serviceName, &notifee)
 }

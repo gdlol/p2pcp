@@ -33,19 +33,24 @@ func (r *receiver) GetNode() node.Node {
 }
 
 func (r *receiver) FindPeer(ctx context.Context, id string) (*peer.AddrInfo, error) {
-	if len(id) < 7 {
-		panic("Invalid id length.")
+	if !r.node.IsPrivateMode() {
+		slog.Debug("Waiting for WAN connection...")
+		err := r.node.WaitForWAN(ctx)
+		if err != nil {
+			return nil, err
+		}
+		slog.Debug("Connected to WAN.")
 	}
-	topic := id[len(id)-7:]
+
 	var senderAddrInfo peer.AddrInfo
 	for {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		time.Sleep(3 * time.Second)
+		time.Sleep(1 * time.Second)
 
 		slog.Debug("Finding sender from DHT...")
-		peers, err := r.node.FindPeers(ctx, topic)
+		peers, err := r.node.FindPeers(ctx, id)
 		if err != nil {
 			slog.Debug("Error finding sender from DHT, retrying...", "error", err)
 		} else {
@@ -61,7 +66,7 @@ func (r *receiver) FindPeer(ctx context.Context, id string) (*peer.AddrInfo, err
 					continue
 				}
 				if !strings.HasSuffix(nodeID.String(), id) {
-					slog.Warn("Found invalid sender advertising topic.", "topic", topic, "sender", addrInfo)
+					slog.Warn("Found invalid sender advertising topic.", "topic", id, "sender", addrInfo)
 					continue
 				}
 				validPeers = append(validPeers, addrInfo)
@@ -72,8 +77,8 @@ func (r *receiver) FindPeer(ctx context.Context, id string) (*peer.AddrInfo, err
 				slog.Info("Found sender.", "sender", senderAddrInfo)
 				break
 			} else if len(validPeers) > 1 {
-				slog.Warn("Found multiple peers advertising topic.", "topic", topic, "peers", validPeers)
-				return nil, fmt.Errorf("found multiple peers advertising topic %s", topic)
+				slog.Warn("Found multiple peers advertising topic.", "topic", id, "peers", validPeers)
+				return nil, fmt.Errorf("found multiple peers advertising topic %s", id)
 			}
 		}
 	}

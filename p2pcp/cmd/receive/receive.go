@@ -39,18 +39,18 @@ var ReceiveCmd = &cobra.Command{
 		if len(args) == 2 {
 			path, err = os.Getwd()
 			if err != nil {
-				slog.Error("Error getting current working directory.", "error", err)
-				return err
+				return fmt.Errorf("error getting current working directory: %w", err)
 			}
 		} else {
 			path, err = filepath.Abs(args[1])
 			if err != nil {
-				slog.Error("Error getting absolute path.", "path", args[2], "error", err)
-				return err
+				return fmt.Errorf("error getting absolute path: %w", err)
 			}
 		}
 
-		slog.Debug("Receiving...", "id", id, "path", path)
-		return receive.Receive(ctx, id, secret, path)
+		private, _ := cmd.Flags().GetBool("private")
+
+		slog.Debug("Receiving...", "id", id, "path", path, "private", private)
+		return receive.Receive(ctx, id, secret, path, private)
 	},
 }

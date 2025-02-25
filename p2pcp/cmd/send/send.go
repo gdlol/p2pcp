@@ -29,24 +29,23 @@ var SendCmd = &cobra.Command{
 		if len(args) == 0 {
 			path, err = os.Getwd()
 			if err != nil {
-				slog.Error("Error getting current working directory.", "error", err)
-				return err
+				return fmt.Errorf("error getting current working directory: %w", err)
 			}
 		} else {
 			path, err = filepath.Abs(args[0])
 			if err != nil {
-				slog.Error("Error getting absolute path.", "path", args[0], "error", err)
-				return err
+				return fmt.Errorf("error getting absolute path: %w", err)
 			}
 		}
 		strict, _ := cmd.Flags().GetBool("strict")
 
-		slog.Debug(fmt.Sprintf("Sending %s...", path))
+		private, _ := cmd.Flags().GetBool("private")
 
-		return send.Send(ctx, path, strict)
+		slog.Debug(fmt.Sprintf("Sending %s...", path), "strict", strict, "private", private)
+		return send.Send(ctx, path, strict, private)
 	},
 }
 
 func init() {
-	SendCmd.Flags().Bool("strict", false, "Use strict mode, this will generate a long token for authentication")
+	SendCmd.Flags().BoolP("strict", "s", false, "Use strict mode, this will generate a long token for authentication")
 }

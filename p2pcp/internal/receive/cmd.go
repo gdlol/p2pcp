@@ -5,38 +5,42 @@ import (
 	"fmt"
 	"p2pcp/internal/auth"
 	"p2pcp/internal/node"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"moul.io/drunken-bishop/drunkenbishop"
 )
 
-func Receive(ctx context.Context, id string, secret string, basePath string) error {
+func Receive(ctx context.Context, id string, secret string, basePath string, private bool) error {
 	ctx = network.WithAllowLimitedConn(ctx, "hole-punching")
 
-	n, err := node.NewNode(ctx)
+	n, err := node.NewNode(ctx, private)
 	if err != nil {
 		return fmt.Errorf("error creating new node: %w", err)
 	}
 	defer n.Close()
 
-	err = n.StartMdns(func(ai peer.AddrInfo) {})
+	err = n.StartMdns()
 	if err != nil {
 		return fmt.Errorf("error starting mDNS service: %w", err)
 	}
 	receiver := NewReceiver(n)
 
-	fmt.Println("Finding sender...")
+	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	s.Suffix = " Finding sender..."
+	s.Start()
 	peer, err := receiver.FindPeer(ctx, id)
+	s.Stop()
 	if err != nil {
-		return fmt.Errorf("error finding peer: %w", err)
+		return fmt.Errorf("error finding sender: %w", err)
 	}
 
 	nodeID, err := node.GetNodeID(peer.ID)
 	if err != nil {
 		return fmt.Errorf("error getting node ID for %v: %w", peer.ID, err)
 	}
-	if id != nodeID.String() {
+	if id != nodeID.String() { // non-strict mode
 		fmt.Println("Sender ID:", nodeID.String())
 		room := drunkenbishop.FromBytes(nodeID.Bytes())
 		fmt.Println(room)

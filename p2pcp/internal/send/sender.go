@@ -20,13 +20,13 @@ import (
 type Sender interface {
 	GetNode() node.Node
 	GetAdvertiseTopic() string
-	AdvertiseWAN(ctx context.Context)
-	Send(ctx context.Context, secretHash []byte, path string, strict bool) error
+	Send(ctx context.Context, secretHash []byte, path string) error
 	Close()
 }
 
 type sender struct {
-	node node.Node
+	node       node.Node
+	strictMode bool
 }
 
 func (s *sender) GetNode() node.Node {
@@ -35,35 +35,18 @@ func (s *sender) GetNode() node.Node {
 
 func (s *sender) GetAdvertiseTopic() string {
 	id := s.node.ID().String()
-	return id[len(id)-7:]
+	if s.strictMode {
+		return id
+	} else {
+		return id[len(id)-7:]
+	}
 }
 
 func (s *sender) Close() {
 	s.node.Close()
 }
 
-func (s *sender) AdvertiseWAN(ctx context.Context) {
-	node := s.node
-	topic := s.GetAdvertiseTopic()
-
-	// Advertise self to DHT until success/cancel.
-	for ctx.Err() == nil {
-		time.Sleep(3 * time.Second)
-		slog.Debug("Advertising to WAN DHT...", "topic", topic)
-		err := node.AdvertiseWAN(ctx, topic)
-		if ctx.Err() != nil {
-			return
-		}
-		if err != nil {
-			slog.Debug("Error advertising to WAN DHT, retrying...", "error", err)
-		} else {
-			slog.Debug("Advertised to WAN DHT.")
-			break
-		}
-	}
-}
-
-func (s *sender) Send(ctx context.Context, secretHash []byte, path string, strict bool) error {
+func (s *sender) Send(ctx context.Context, secretHash []byte, path string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -91,7 +74,7 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string, stric
 					}
 				}
 			} else {
-				if !strict {
+				if !s.strictMode {
 					select {
 					case authenticate <- nil: // Causes abort if not in strict mode.
 					default:
@@ -129,7 +112,7 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string, stric
 	host.SetStreamHandler(transfer.Protocol, func(stream network.Stream) {
 		slog.Debug("Received new transfer stream.")
 		remotePeer := stream.Conn().RemotePeer()
-		if authenticatedPeer == nil || *authenticatedPeer != remotePeer {
+		if *authenticatedPeer != remotePeer {
 			slog.Warn("Unauthorized transfer stream.")
 			stream.Close()
 		} else {
@@ -151,86 +134,131 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string, stric
 	return nil
 }
 
-func NewSender(ctx context.Context, options ...libp2p.Option) (Sender, error) {
-	node, err := node.NewNode(ctx, options...)
+func advertiseToWAN(sender Sender, ctx context.Context) error {
+	node := sender.GetNode()
+	topic := sender.GetAdvertiseTopic()
+
+	slog.Debug("Waiting for WAN connection...")
+	err := node.WaitForWAN(ctx)
+	if err != nil {
+		return fmt.Errorf("error waiting for WAN connection: %w", err)
+	}
+	slog.Debug("Connected to WAN.")
+
+	// Advertise self to DHT until success/cancel.
+	for ctx.Err() == nil {
+		time.Sleep(3 * time.Second)
+		slog.Debug("Advertising to WAN DHT...", "topic", topic)
+		err := node.AdvertiseWAN(ctx, topic)
+		if ctx.Err() != nil {
+			break
+		}
+		if err != nil {
+			slog.Debug("Error advertising to WAN DHT, retrying...", "error", err)
+		} else {
+			slog.Debug("Advertised to WAN DHT.")
+			break
+		}
+	}
+	return ctx.Err()
+}
+
+func newSender(ctx context.Context, strictMode bool, privateMode bool, options ...libp2p.Option) (Sender, error) {
+	node, err := node.NewNode(ctx, privateMode, options...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating sender: %w", err)
 	}
-	return &sender{node: node}, nil
+	return &sender{node: node, strictMode: strictMode}, nil
 }
 
-// Create new sender every 6 seconds. until 1 successfully advertised itself to WAN DHT.
-func NewAdvertisedSender(ctx context.Context, options ...libp2p.Option) (Sender, error) {
-	groupCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+func NewAdvertisedSender(ctx context.Context, strictMode bool, privateMode bool) (Sender, error) {
+	var sender Sender
+	var err error
+	if privateMode {
+		sender, err = newSender(ctx, strictMode, privateMode)
+	} else {
+		// Create new sender every 6 seconds. until 1 successfully advertised itself to WAN DHT.
+		groupCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
-	ps, err := pstoremem.NewPeerstore()
-	if err != nil {
-		return nil, fmt.Errorf("error creating peerstore: %w", err)
-	}
-
-	resultChan := make(chan Sender, 1)
-	var wg sync.WaitGroup
-
-	// Try advertising up to 1 minute.
-	launchNode := func() error {
-		if groupCtx.Err() != nil {
-			return groupCtx.Err()
-		}
-
-		sender, err := NewSender(ctx, append([]libp2p.Option{libp2p.Peerstore(ps)}, options...)...)
+		ps, err := pstoremem.NewPeerstore()
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("error creating peerstore: %w", err)
 		}
-		success := false
-		defer func() {
-			if !success {
-				sender.Close()
+
+		resultChan := make(chan Sender, 1)
+		var wg sync.WaitGroup
+
+		// Try advertising up to 1 minute.
+		launchNode := func() error {
+			if groupCtx.Err() != nil {
+				return groupCtx.Err()
+			}
+
+			candidate, err := newSender(ctx, strictMode, privateMode, libp2p.Peerstore(ps))
+			if err != nil {
+				return err
+			}
+			success := false
+			defer func() {
+				if !success {
+					candidate.Close()
+				}
+			}()
+
+			timeoutCtx, cancel := context.WithTimeout(groupCtx, time.Minute)
+			defer cancel()
+			err = advertiseToWAN(candidate, timeoutCtx)
+			if err != nil {
+				return err
+			}
+
+			select {
+			case resultChan <- candidate:
+				success = true
+			case <-groupCtx.Done():
+			}
+			return nil
+		}
+
+		go func() {
+			for i := 0; ; i++ {
+				if groupCtx.Err() != nil {
+					return
+				}
+				// Create 3 nodes at once at the beginning.
+				if i >= 3 {
+					time.Sleep(6 * time.Second)
+				}
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					err := launchNode()
+					if err != nil && groupCtx.Err() != context.Canceled {
+						slog.Debug("Error creating advertised node.", "error", err)
+					}
+				}()
 			}
 		}()
 
-		timeoutCtx, cancel := context.WithTimeout(groupCtx, time.Minute)
-		defer cancel()
-		sender.AdvertiseWAN(timeoutCtx)
+		sender = <-resultChan
+		cancel()
+		wg.Wait()
 
-		select {
-		case resultChan <- sender:
-			success = true
-		case <-groupCtx.Done():
-		}
-		return nil
+		go func() {
+			for ctx.Err() == nil {
+				time.Sleep(6 * time.Second)
+				sender.GetNode().AdvertiseWAN(ctx, sender.GetAdvertiseTopic())
+			}
+		}()
 	}
 
 	go func() {
-		for i := 0; ; i++ {
-			if groupCtx.Err() != nil {
-				return
-			}
-			// Create 3 nodes at once at the beginning.
-			if i >= 3 {
-				time.Sleep(6 * time.Second)
-			}
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				err := launchNode()
-				if err != nil && groupCtx.Err() != context.Canceled {
-					slog.Debug("Error creating advertised node.", "error", err)
-				}
-			}()
-		}
-	}()
-
-	result := <-resultChan
-	cancel()
-	wg.Wait()
-
-	go func() {
 		for ctx.Err() == nil {
-			time.Sleep(6 * time.Second)
-			result.GetNode().AdvertiseWAN(ctx, result.GetAdvertiseTopic())
+			time.Sleep(3 * time.Second)
+			sender.GetNode().AdvertiseLAN(ctx, sender.GetAdvertiseTopic())
 		}
 	}()
 
-	return result, nil
+	return sender, err
 }

@@ -5,9 +5,11 @@
   "ignorePaths": ["**/node_modules/**", "LICENSE"],
   "words": [
     "autorelay",
+    "briandowns",
     "devcontainer",
     "devcontainers",
     "drunkenbishop",
+    "IPFS",
     "libp2p",
     "mdns",
     "moul",

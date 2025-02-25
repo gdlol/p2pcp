@@ -4,42 +4,29 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"log/slog"
 	"p2pcp/internal/auth"
 	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"moul.io/drunken-bishop/drunkenbishop"
 )
 
-func Send(ctx context.Context, path string, strict bool) error {
+func Send(ctx context.Context, path string, strict bool, private bool) error {
 	ctx = network.WithAllowLimitedConn(ctx, "hole-punching")
 
-	fmt.Println("Preparing sender...")
-	sender, err := NewAdvertisedSender(ctx)
+	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	s.Suffix = " Preparing sender..."
+	s.Start()
+	sender, err := NewAdvertisedSender(ctx, strict, private)
+	s.Stop()
 	if err != nil {
 		return fmt.Errorf("error creating sender: %w", err)
 	}
+	defer sender.Close()
 	node := sender.GetNode()
-	defer node.Close()
 
-	topic := sender.GetAdvertiseTopic()
-	err = node.StartMdns(func(ai peer.AddrInfo) {
-		go func() {
-			for ctx.Err() != nil {
-				time.Sleep(time.Second)
-				slog.Debug("Advertising to LAN DHT...", "topic", topic)
-				err := node.AdvertiseLAN(ctx, sender.GetAdvertiseTopic())
-				if err != nil {
-					slog.Debug("Error advertising to LAN DHT, retrying...", "error", err)
-				} else {
-					slog.Debug("Advertised to LAN DHT.")
-					break
-				}
-			}
-		}()
-	})
+	err = node.StartMdns()
 	if err != nil {
 		return fmt.Errorf("error starting mDNS service: %w", err)
 	}
@@ -64,14 +51,20 @@ func Send(ctx context.Context, path string, strict bool) error {
 	if strict {
 		id = node.ID().String()
 	} else {
-		id = topic
+		id = sender.GetAdvertiseTopic()
 	}
 	fmt.Println("Please run the following command on receiver side:")
-	fmt.Println("p2pcp", "receive", id, secret)
+	fmt.Println()
+	if private {
+		fmt.Println("p2pcp", "receive", id, secret, "--private")
+	} else {
+		fmt.Println("p2pcp", "receive", id, secret)
+	}
+	fmt.Println()
 
 	fmt.Println("Sending...")
 	secretHash := auth.ComputeHash([]byte(secret))
-	err = sender.Send(ctx, secretHash, path, strict)
+	err = sender.Send(ctx, secretHash, path)
 	if err == nil {
 		fmt.Println("Done.")
 	}

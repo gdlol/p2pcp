@@ -29,6 +29,7 @@ func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Show debug logs")
+	rootCmd.PersistentFlags().BoolP("private", "p", false, "Use private network only")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		debug, _ := cmd.Flags().GetBool("debug")
 		if debug {

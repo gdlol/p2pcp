@@ -16,6 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/backoff"
+	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	b58 "github.com/mr-tron/base58/base58"
 	"github.com/multiformats/go-multiaddr"
@@ -30,8 +31,10 @@ type NodeID interface {
 type Node interface {
 	ID() NodeID
 	GetHost() host.Host
-	StartMdns(handleMdnsPeerFound HandleMdnsPeerFound) error
+	IsPrivateMode() bool
+	StartMdns() error
 	AdvertiseLAN(ctx context.Context, topic string) error
+	WaitForWAN(ctx context.Context) error
 	AdvertiseWAN(ctx context.Context, topic string) error
 	FindPeers(ctx context.Context, topic string) (<-chan peer.AddrInfo, error)
 	Close()
@@ -39,15 +42,6 @@ type Node interface {
 
 type nodeID struct {
 	value []byte
-}
-
-type node struct {
-	id              NodeID
-	host            host.Host
-	dht             *dual.DHT
-	mdnsService     MdnsService
-	peerSource      chan peer.AddrInfo
-	peerSourceLimit chan int
 }
 
 func (k *nodeID) String() string {
@@ -58,6 +52,16 @@ func (k *nodeID) Bytes() []byte {
 	return k.value
 }
 
+type node struct {
+	id              NodeID
+	host            host.Host
+	privateMode     bool
+	dht             *dual.DHT
+	mdnsService     mdns.Service
+	peerSource      chan peer.AddrInfo
+	peerSourceLimit chan int
+}
+
 func (n *node) ID() NodeID {
 	return n.id
 }
@@ -66,8 +70,11 @@ func (n *node) GetHost() host.Host {
 	return n.host
 }
 
-func (n *node) StartMdns(handlePeerFound HandleMdnsPeerFound) error {
-	n.mdnsService.SetHandler(handlePeerFound)
+func (n *node) IsPrivateMode() bool {
+	return n.privateMode
+}
+
+func (n *node) StartMdns() error {
 	return n.mdnsService.Start()
 }
 
@@ -75,6 +82,18 @@ func (n *node) AdvertiseLAN(ctx context.Context, topic string) error {
 	discovery := routing.NewRoutingDiscovery(n.dht.LAN)
 	_, err := discovery.Advertise(ctx, topic)
 	return err
+}
+
+func (n *node) WaitForWAN(ctx context.Context) error {
+	for ctx.Err() == nil {
+		if !n.dht.WANActive() {
+			time.Sleep(time.Second)
+			continue
+		} else {
+			break
+		}
+	}
+	return ctx.Err()
 }
 
 func (n *node) AdvertiseWAN(ctx context.Context, topic string) error {
@@ -100,11 +119,10 @@ func findPeersForAutoRelay(ctx context.Context, n node) {
 		// Get random peers from DHT.
 		b := backoffStrategy()
 		var peers []peer.ID
-		var err error
 		for ctx.Err() == nil {
-			if n.dht.WAN.RoutingTable().Size() == 0 {
-				time.Sleep(time.Second)
-				continue
+			err := n.WaitForWAN(ctx)
+			if err != nil {
+				return
 			}
 			slog.Debug("Getting peers from DHT for auto relay...")
 			peers, err = n.dht.WAN.GetClosestPeers(ctx, rand.Text())
@@ -168,7 +186,7 @@ func GetNodeID(peerID peer.ID) (NodeID, error) {
 	return &nodeID{value: hashValue}, nil
 }
 
-func NewNode(ctx context.Context, options ...libp2p.Option) (Node, error) {
+func NewNode(ctx context.Context, privateMode bool, options ...libp2p.Option) (Node, error) {
 	success := false
 	closeIfError := func(closer io.Closer) {
 		if !success {
@@ -179,26 +197,19 @@ func NewNode(ctx context.Context, options ...libp2p.Option) (Node, error) {
 	peerSource := make(chan peer.AddrInfo)
 	peerSourceLimit := make(chan int, 1)
 
-	// listenAddresses := []string{
-	// 	"/ip4/0.0.0.0/tcp/0",
-	// 	"/ip4/0.0.0.0/udp/0/quic-v1",
-	// 	"/ip6/::/tcp/0",
-	// 	"/ip6/::/udp/0/quic-v1",
-	// }
-	options = append([]libp2p.Option{
-		libp2p.EnableAutoNATv2(),
-		libp2p.EnableHolePunching(),
-		libp2p.EnableAutoRelayWithPeerSource(func(ctx context.Context, num int) <-chan peer.AddrInfo {
-			peerSourceLimit <- num
-			return peerSource
-		}),
-		// libp2p.ChainOptions(
-		// 	libp2p.Transport(tcp.NewTCPTransport),
-		// 	libp2p.Transport(quic.NewTransport),
-		// ),
-		// libp2p.ListenAddrStrings(listenAddresses...),
-		libp2p.ForceReachabilityPrivate(), // For auto relay to start
-	}, options...)
+	if privateMode {
+		options = append([]libp2p.Option{libp2p.ConnectionGater(&privateAddressGater{})}, options...)
+	} else {
+		options = append([]libp2p.Option{
+			libp2p.EnableAutoNATv2(),
+			libp2p.EnableHolePunching(),
+			libp2p.EnableAutoRelayWithPeerSource(func(ctx context.Context, num int) <-chan peer.AddrInfo {
+				peerSourceLimit <- num
+				return peerSource
+			}),
+			libp2p.ForceReachabilityPrivate(), // Force auto relay to start
+		}, options...)
+	}
 
 	host, err := libp2p.New(options...)
 	if err != nil {
@@ -223,6 +234,7 @@ func NewNode(ctx context.Context, options ...libp2p.Option) (Node, error) {
 	node := &node{
 		id:              id,
 		host:            host,
+		privateMode:     privateMode,
 		dht:             dht,
 		mdnsService:     mdnsService,
 		peerSource:      peerSource,
