@@ -2,7 +2,6 @@ package send
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"p2pcp/internal/auth"
 	"time"
@@ -33,12 +32,9 @@ func Send(ctx context.Context, path string, strict bool, private bool) error {
 
 	var secret string
 	if !strict {
-		secret, err = auth.GetPin()
-		if err != nil {
-			return fmt.Errorf("error generating pin: %w", err)
-		}
+		secret = auth.GetOneTimeSecret()
 	} else {
-		secret = rand.Text()
+		secret = auth.GetStrongSecret()
 	}
 
 	if !strict {

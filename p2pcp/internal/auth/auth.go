@@ -1,9 +1,7 @@
 package auth
 
 import (
-	"crypto"
 	"crypto/rand"
-	_ "crypto/sha256"
 	"crypto/subtle"
 	"fmt"
 	"io"
@@ -12,6 +10,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"golang.org/x/crypto/blake2b"
 )
 
 const Protocol protocol.ID = "/p2pcp/auth/0.1.0"
@@ -19,25 +18,25 @@ const Protocol protocol.ID = "/p2pcp/auth/0.1.0"
 const authenticationTimeout = 10 * time.Second
 
 func ComputeHash(input []byte) []byte {
-	hash := crypto.SHA256.New()
-	_, err := hash.Write(input)
-	if err != nil {
-		panic(err)
-	}
-	return hash.Sum(nil)
+	hash := blake2b.Sum256(input)
+	return hash[:]
 }
 
 // 4-digit PIN
-func GetPin() (string, error) {
+func GetOneTimeSecret() string {
 	digits := make([]string, 4)
 	for i := range digits {
 		n, err := rand.Int(rand.Reader, big.NewInt(10))
 		if err != nil {
-			return "", err
+			panic(err)
 		}
 		digits[i] = n.String()
 	}
-	return strings.Join(digits, ""), nil
+	return strings.Join(digits, "")
+}
+
+func GetStrongSecret() string {
+	return rand.Text()
 }
 
 func HandleAuthenticate(stream io.ReadWriteCloser, secretHash []byte) (*bool, error) {

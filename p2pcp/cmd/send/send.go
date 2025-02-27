@@ -16,6 +16,7 @@ var SendCmd = &cobra.Command{
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := cobra.MaximumNArgs(1)(cmd, args); err != nil {
 			fmt.Fprintln(os.Stderr, err)
+			fmt.Println()
 			cmd.Usage()
 			os.Exit(1)
 		}
@@ -47,5 +48,5 @@ var SendCmd = &cobra.Command{
 }
 
 func init() {
-	SendCmd.Flags().BoolP("strict", "s", false, "Use strict mode, this will generate a long token for authentication")
+	SendCmd.Flags().BoolP("strict", "s", false, "use strict mode, this will generate a long secret for authentication")
 }

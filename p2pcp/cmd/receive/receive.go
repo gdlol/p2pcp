@@ -11,11 +11,12 @@ import (
 )
 
 var ReceiveCmd = &cobra.Command{
-	Use:   "receive id {pin | token} [path]",
+	Use:   "receive id secret [path]",
 	Short: "Receives file/directory from remote peer to specified directory.",
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := cobra.RangeArgs(2, 3)(cmd, args); err != nil {
 			fmt.Fprintln(os.Stderr, err)
+			fmt.Println()
 			cmd.Usage()
 			os.Exit(1)
 		}

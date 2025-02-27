@@ -11,11 +11,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const version = "0.1.0"
+
 var rootCmd = &cobra.Command{
 	Use:           "p2pcp",
 	Short:         "Peer to Peer Copy, a peer-to-peer data transfer tool.",
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	Version:       version,
 }
 
 func Execute() {
@@ -28,8 +31,8 @@ func Execute() {
 func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
-	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Show debug logs")
-	rootCmd.PersistentFlags().BoolP("private", "p", false, "Use private network only")
+	rootCmd.PersistentFlags().BoolP("debug", "d", false, "show debug logs")
+	rootCmd.PersistentFlags().BoolP("private", "p", false, "only connect to private networks")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		debug, _ := cmd.Flags().GetBool("debug")
 		if debug {
