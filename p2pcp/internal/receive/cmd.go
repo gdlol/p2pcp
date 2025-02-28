@@ -36,9 +36,9 @@ func Receive(ctx context.Context, id string, secret string, basePath string, pri
 		return fmt.Errorf("error finding sender: %w", err)
 	}
 
-	nodeID, err := node.GetNodeID(peer.ID)
+	nodeID, err := node.GetNodeID(peer)
 	if err != nil {
-		return fmt.Errorf("error getting node ID for %v: %w", peer.ID, err)
+		return fmt.Errorf("error getting node ID for %v: %w", peer, err)
 	}
 	if id != nodeID.String() { // non-strict mode
 		fmt.Println("Sender ID:", nodeID.String())
@@ -54,7 +54,7 @@ func Receive(ctx context.Context, id string, secret string, basePath string, pri
 
 	fmt.Println("Receiving...")
 	secretHash := auth.ComputeHash([]byte(secret))
-	err = receiver.Receive(ctx, *peer, secretHash, basePath)
+	err = receiver.Receive(ctx, peer, secretHash, basePath)
 	if err == nil {
 		fmt.Println("Done.")
 	}

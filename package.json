@@ -2,7 +2,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "go run build"
+    "build": "go run build build",
+    "format": "go run build format",
+    "lint": "go run build lint",
+    "test": "go run build test"
   },
   "dependencies": {
     "cspell": "^8.17.3",

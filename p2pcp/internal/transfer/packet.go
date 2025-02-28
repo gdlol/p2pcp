@@ -51,9 +51,11 @@ func writePacket(writer io.Writer, packet *packet) error {
 	if err != nil {
 		return err
 	}
-	_, err = writer.Write(packet.payload)
-	if err != nil {
-		return err
+	if len(packet.payload) > 0 {
+		_, err = writer.Write(packet.payload)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

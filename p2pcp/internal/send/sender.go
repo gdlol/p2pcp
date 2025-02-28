@@ -53,12 +53,12 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string) error
 	n := s.node
 	host := n.GetHost()
 
-	var authenticatedPeer *peer.ID = nil
-	authenticate := make(chan *peer.ID, 1)
+	var authenticatedPeer peer.ID = ""
+	authenticate := make(chan peer.ID, 1)
 	host.SetStreamHandler(auth.Protocol, func(stream network.Stream) {
 		slog.Debug("Received new auth stream.")
 		remotePeer := stream.Conn().RemotePeer()
-		if authenticatedPeer == nil {
+		if authenticatedPeer == "" {
 			success, err := auth.HandleAuthenticate(stream, secretHash)
 			if err != nil {
 				slog.Warn("Error authenticating receiver.", "error", err)
@@ -69,14 +69,14 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string) error
 			if *success {
 				if err == nil {
 					select {
-					case authenticate <- &remotePeer:
+					case authenticate <- remotePeer:
 					default:
 					}
 				}
 			} else {
 				if !s.strictMode {
 					select {
-					case authenticate <- nil: // Causes abort if not in strict mode.
+					case authenticate <- "": // Causes abort if not in strict mode.
 					default:
 					}
 				}
@@ -89,14 +89,14 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string) error
 
 	authenticatedPeer = <-authenticate
 	host.RemoveStreamHandler(auth.Protocol)
-	if authenticatedPeer == nil {
+	if authenticatedPeer == "" {
 		cancel()
 		return fmt.Errorf("failed to authenticate receiver")
 	}
 	slog.Info("Authenticated receiver.", "peer", authenticatedPeer)
 
 	streams := make(chan io.ReadWriteCloser, 1)
-	channel := transfer.NewChannel(ctx, func() (io.ReadWriteCloser, error) {
+	channel := transfer.NewChannel(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 		select {
 		case stream := <-streams:
 			return stream, nil
@@ -112,7 +112,7 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string) error
 	host.SetStreamHandler(transfer.Protocol, func(stream network.Stream) {
 		slog.Debug("Received new transfer stream.")
 		remotePeer := stream.Conn().RemotePeer()
-		if *authenticatedPeer != remotePeer {
+		if authenticatedPeer != remotePeer {
 			slog.Warn("Unauthorized transfer stream.")
 			stream.Close()
 		} else {
@@ -125,7 +125,7 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string) error
 	})
 	defer host.RemoveStreamHandler(transfer.Protocol)
 
-	err := writeTar(channel, path)
+	err := transfer.WriteTar(channel, path)
 	if err != nil {
 		return fmt.Errorf("error sending path %s: %w", path, err)
 	}

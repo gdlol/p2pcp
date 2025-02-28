@@ -1,28 +1,14 @@
-package send
+package transfer
 
 import (
-	"archive/tar"
 	"fmt"
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestTransferHandler is a mock transfer handler that can be registered for the TransferProtocol.
-type TestTransferHandler struct {
-	handler func(*tar.Header, io.Reader)
-	done    func()
-}
-
-func (tth *TestTransferHandler) HandleFile(hdr *tar.Header, r io.Reader) { tth.handler(hdr, r) }
-
-func (tth *TestTransferHandler) Done() {
-	tth.done()
-}
-
-func Test_relativePath(t *testing.T) {
+func TestRelativePath(t *testing.T) {
 	tests := []struct {
 		basePath   string // Path given by user.
 		baseIsDir  bool

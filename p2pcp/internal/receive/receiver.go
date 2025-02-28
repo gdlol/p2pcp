@@ -20,8 +20,8 @@ import (
 
 type Receiver interface {
 	GetNode() node.Node
-	FindPeer(ctx context.Context, id string) (*peer.AddrInfo, error)
-	Receive(ctx context.Context, sender peer.AddrInfo, secretHash []byte, basePath string) error
+	FindPeer(ctx context.Context, id string) (peer.ID, error)
+	Receive(ctx context.Context, sender peer.ID, secretHash []byte, basePath string) error
 }
 
 type receiver struct {
@@ -32,20 +32,20 @@ func (r *receiver) GetNode() node.Node {
 	return r.node
 }
 
-func (r *receiver) FindPeer(ctx context.Context, id string) (*peer.AddrInfo, error) {
+func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
 	if !r.node.IsPrivateMode() {
 		slog.Debug("Waiting for WAN connection...")
 		err := r.node.WaitForWAN(ctx)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 		slog.Debug("Connected to WAN.")
 	}
 
-	var senderAddrInfo peer.AddrInfo
+	var sender peer.ID
 	for {
 		if ctx.Err() != nil {
-			return nil, ctx.Err()
+			return "", ctx.Err()
 		}
 		time.Sleep(1 * time.Second)
 
@@ -73,19 +73,19 @@ func (r *receiver) FindPeer(ctx context.Context, id string) (*peer.AddrInfo, err
 				break
 			}
 			if len(validPeers) == 1 {
-				senderAddrInfo = validPeers[0]
-				slog.Info("Found sender.", "sender", senderAddrInfo)
+				sender = validPeers[0].ID
+				slog.Info("Found sender.", "sender", sender)
 				break
 			} else if len(validPeers) > 1 {
 				slog.Warn("Found multiple peers advertising topic.", "topic", id, "peers", validPeers)
-				return nil, fmt.Errorf("found multiple peers advertising topic %s", id)
+				return "", fmt.Errorf("found multiple peers advertising topic %s", id)
 			}
 		}
 	}
-	return &senderAddrInfo, nil
+	return sender, nil
 }
 
-func (r *receiver) Receive(ctx context.Context, sender peer.AddrInfo, secretHash []byte, basePath string) error {
+func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byte, basePath string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -94,7 +94,8 @@ func (r *receiver) Receive(ctx context.Context, sender peer.AddrInfo, secretHash
 
 	for ctx.Err() == nil {
 		slog.Debug("Connecting to sender...", "sender", sender)
-		err := host.Connect(ctx, sender)
+		addrs := host.Peerstore().Addrs(sender)
+		err := host.Connect(ctx, peer.AddrInfo{ID: sender, Addrs: addrs})
 		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
@@ -104,7 +105,7 @@ func (r *receiver) Receive(ctx context.Context, sender peer.AddrInfo, secretHash
 			continue
 		}
 		slog.Info("Connected to sender.", "sender", sender)
-		host.ConnManager().Protect(sender.ID, "sender")
+		host.ConnManager().Protect(sender, "sender")
 		break
 	}
 
@@ -115,7 +116,7 @@ func (r *receiver) Receive(ctx context.Context, sender peer.AddrInfo, secretHash
 	getStream := func(protocol protocol.ID) (io.ReadWriteCloser, error) {
 		b := backoffStrategy()
 		for ctx.Err() == nil {
-			stream, err := host.NewStream(ctx, sender.ID, protocol)
+			stream, err := host.NewStream(ctx, sender, protocol)
 			if err != nil {
 				if ctx.Err() != nil {
 					return nil, ctx.Err()
@@ -143,7 +144,7 @@ func (r *receiver) Receive(ctx context.Context, sender peer.AddrInfo, secretHash
 		slog.Info("Authenticated.")
 	}
 
-	channel := transfer.NewChannel(ctx, func() (io.ReadWriteCloser, error) {
+	channel := transfer.NewChannel(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 		return getStream(transfer.Protocol)
 	}, transfer.DefaultPayloadSize)
 	defer func() {
@@ -152,7 +153,7 @@ func (r *receiver) Receive(ctx context.Context, sender peer.AddrInfo, secretHash
 		}
 	}()
 
-	err = readTar(channel, basePath)
+	err = transfer.ReadTar(channel, basePath)
 	if err != nil {
 		return fmt.Errorf("error receiving tar: %w", err)
 	}

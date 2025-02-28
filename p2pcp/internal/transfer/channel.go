@@ -48,7 +48,7 @@ func (r *readBuffer) reset() {
 	r.length = 0
 }
 
-type GetStream func() (io.ReadWriteCloser, error)
+type GetStream func(ctx context.Context) (io.ReadWriteCloser, error)
 
 type channel struct {
 	ctx           context.Context
@@ -63,9 +63,9 @@ type channel struct {
 	writeClosed   bool
 }
 
-func (c *channel) getCurrentStream() (io.ReadWriteCloser, error) {
+func (c *channel) getCurrentStream(ctx context.Context) (io.ReadWriteCloser, error) {
 	if c.currentStream == nil {
-		stream, err := c.getStream()
+		stream, err := c.getStream(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -83,7 +83,7 @@ func (c *channel) closeStream() {
 
 func (c *channel) writeAck(seq uint64) error {
 	packet := newAckPacket(seq)
-	stream, err := c.getCurrentStream()
+	stream, err := c.getCurrentStream(c.ctx)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (c *channel) read(p []byte) (n int, err error) {
 		return 0, io.EOF
 	}
 	for c.ctx.Err() == nil {
-		stream, err := c.getCurrentStream()
+		stream, err := c.getCurrentStream(c.ctx)
 		if err != nil {
 			return 0, err
 		}
@@ -165,7 +165,7 @@ func (c *channel) write(p []byte) (n int, err error) {
 		return 0, nil
 	}
 	for c.ctx.Err() == nil {
-		stream, err := c.getCurrentStream()
+		stream, err := c.getCurrentStream(c.ctx)
 		if err != nil {
 			return 0, err
 		}
@@ -231,12 +231,12 @@ func (c *channel) close() error {
 	defer cancel()
 	buffer := make([]byte, c.payloadSize)
 
+	defer c.closeStream()
 	for ctx.Err() == nil {
-		stream, err := c.getCurrentStream()
+		stream, err := c.getCurrentStream(ctx)
 		if err != nil {
 			return err
 		}
-		defer c.closeStream()
 
 		if !c.writeClosed {
 			// Write FIN
@@ -244,6 +244,7 @@ func (c *channel) close() error {
 			err := writePacket(stream, packet)
 			if err != nil {
 				c.logger.Debug("Error writing FIN packet.", "error", err)
+				c.closeStream()
 				continue
 			}
 		}
@@ -254,6 +255,7 @@ func (c *channel) close() error {
 				break
 			}
 			c.logger.Debug("Error reading ACK/FIN packet.", "error", err)
+			c.closeStream()
 			continue
 		}
 
@@ -267,7 +269,7 @@ func (c *channel) close() error {
 		} else {
 			if packet.header.seq != c.readSeq {
 				return fmt.Errorf(
-					"packet ID mismatch FIN: expected %d, received %d",
+					"FIN packet ID mismatch: expected %d, received %d",
 					c.writeSeq, packet.header.seq)
 			}
 			if len(packet.payload) != 0 {
@@ -276,6 +278,7 @@ func (c *channel) close() error {
 			c.readClosed = true
 			err = c.writeAck(c.readSeq)
 			if err != nil {
+				c.closeStream()
 				continue
 			}
 		}
