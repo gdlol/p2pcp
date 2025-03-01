@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestComputeHash(t *testing.T) {
@@ -23,7 +24,7 @@ func TestGetOneTimeSecret(t *testing.T) {
 	chars := make(map[string]bool)
 	for range 1000 {
 		secret := GetOneTimeSecret()
-		assert.Len(t, secret, 4)
+		require.Len(t, secret, 4)
 		secrets[secret] = true
 		for _, char := range secret {
 			chars[string(char)] = true
@@ -41,7 +42,7 @@ func TestGetStrongSecret(t *testing.T) {
 	chars := make(map[string]bool)
 	for range 1000 {
 		secret := GetStrongSecret()
-		assert.GreaterOrEqual(t, len(secret), 26)
+		require.GreaterOrEqual(t, len(secret), 26)
 		secrets[secret] = true
 		for _, char := range secret {
 			chars[string(char)] = true

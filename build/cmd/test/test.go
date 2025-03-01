@@ -11,7 +11,6 @@ var TestCmd = &cobra.Command{
 	Use: "test",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectPath := project.GetProjectPath()
-		err := project.Run("go", "test", filepath.Join(projectPath, "p2pcp", "..."))
-		return err
+		return project.Run("go", "test", filepath.Join(projectPath, "p2pcp", "..."))
 	},
 }

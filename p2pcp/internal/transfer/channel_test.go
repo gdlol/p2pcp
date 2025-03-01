@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type limitedChannel struct {
@@ -106,7 +107,7 @@ func TestChannel(t *testing.T) {
 
 			data := make([]byte, dataLength)
 			_, err := rand.Read(data)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			var transferWg sync.WaitGroup
 			transferWg.Add(2)

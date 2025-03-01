@@ -2,18 +2,15 @@ package cmd
 
 import (
 	project "build/internal"
-	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
 
-var BuildCmd = &cobra.Command{
-	Use: "build",
+var InstallCmd = &cobra.Command{
+	Use: "install",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		projectPath := project.GetProjectPath()
-		return project.Run("go", "build",
-			"-o", filepath.Join(projectPath, "bin")+string(os.PathSeparator),
-			filepath.Join(projectPath, "p2pcp"))
+		return project.Run("go", "install", filepath.Join(projectPath, "p2pcp"))
 	},
 }

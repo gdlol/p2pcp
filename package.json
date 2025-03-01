@@ -4,6 +4,7 @@
   "scripts": {
     "build": "go run build build",
     "format": "go run build format",
+    "go-install": "go run build install",
     "lint": "go run build lint",
     "test": "go run build test"
   },
