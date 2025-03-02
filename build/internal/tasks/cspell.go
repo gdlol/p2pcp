@@ -1,8 +1,6 @@
 package tasks
 
-import (
-	project "build/internal"
-)
+import "project"
 
 func CSpell() error {
 	projectPath := project.GetProjectPath()

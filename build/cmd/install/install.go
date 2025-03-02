@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	project "build/internal"
 	"path/filepath"
+	"project"
 
 	"github.com/spf13/cobra"
 )

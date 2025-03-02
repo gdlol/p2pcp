@@ -1,6 +1,6 @@
 package tasks
 
-import project "build/internal"
+import "project"
 
 func PrettierCheck() error {
 	projectPath := project.GetProjectPath()

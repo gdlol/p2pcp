@@ -248,8 +248,10 @@ func WriteTar(w io.Writer, basePath string) error {
 
 			if info.Mode().IsRegular() {
 				return writeFile(header, writer, path)
-			} else {
+			} else if info.IsDir() || info.Mode()&fs.ModeSymlink == fs.ModeSymlink {
 				return writeTarHeader(header, writer)
+			} else {
+				return nil // Skip unsupported file types.
 			}
 		})
 		if err != nil {

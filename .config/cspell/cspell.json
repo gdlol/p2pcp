@@ -2,7 +2,8 @@
   "version": "0.2",
   "enableGlobDot": true,
   "useGitignore": true,
-  "ignorePaths": ["**/.git/**", "**/node_modules/**", "LICENSE", "*.sum", "go.mod", "pcp/"],
+  "gitignoreRoot": ".",
+  "ignorePaths": ["LICENSE", "*.sum", "go.mod", "pcp/"],
   "words": [
     "autorelay",
     "briandowns",
@@ -24,6 +25,7 @@
     "pstoremem",
     "schollz",
     "stretchr",
+    "testdata",
     "twidth",
     "Wrapf"
   ]

@@ -1,111 +1,46 @@
 package transfer
 
 import (
+	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
-	"runtime"
+	"project"
 	"sync"
+	"test/pkg/asserts"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func assertFileEqual(t *testing.T, file1, file2 string) {
-	info1, err := os.Stat(file1)
-	require.NoError(t, err)
-
-	info2, err := os.Stat(file2)
-	require.NoError(t, err)
-
-	require.Equal(t, info1.Name(), info2.Name())
-	require.Equal(t, info1.Size(), info2.Size())
-	require.Equal(t, info1.Mode(), info2.Mode())
-
-	f1, err := os.Open(file1)
-	require.NoError(t, err)
-	defer f1.Close()
-
-	f2, err := os.Open(file2)
-	require.NoError(t, err)
-	defer f2.Close()
-
-	buf1 := make([]byte, 1024)
-	buf2 := make([]byte, 1024)
-
-	for {
-		n1, err1 := f1.Read(buf1)
-		n2, err2 := f2.Read(buf2)
-
-		require.Equal(t, n1, n2)
-		require.Equal(t, err1, err2)
-		if err1 != nil {
-			break
-		}
-
-		assert.ElementsMatch(t, buf1[:n1], buf2[:n2])
-	}
-}
-
-func assertDirEqual(t *testing.T, dir1, dir2 string) {
-	type walkData struct {
-		path string
-		info os.FileInfo
-		err  error
+func TestIsInBasePath(t *testing.T) {
+	tests := []struct {
+		basePath   string
+		targetPath string
+		expected   bool
+	}{
+		{"/base", "/base/dir/file", true},
+		{"/base", "/base/dir/../file", true},
+		{"/base", "/base/../file", false},
+		{"/base", "/base/dir/./file", true},
+		{"/base", "/other/dir/file", false},
+		{"/base", "/base", true},
+		{"/base", "/base/dir/../../file", false},
+		{".", "file", true},
+		{".", "dir/file", true},
+		{".", "dir/../file", true},
+		{".", "../file", false},
+		{".", "dir/./file", true},
 	}
 
-	var walkData1 []walkData
-	var walkData2 []walkData
-
-	err := filepath.Walk(dir1, func(path string, info os.FileInfo, err error) error {
-		walkData1 = append(walkData1, walkData{path, info, err})
-		return err
-	})
-	require.NoError(t, err)
-
-	err = filepath.Walk(dir2, func(path string, info os.FileInfo, err error) error {
-		walkData2 = append(walkData2, walkData{path, info, err})
-		return err
-	})
-	require.NoError(t, err)
-
-	require.Equal(t, len(walkData1), len(walkData2))
-
-	for i := range walkData1 {
-		walk1 := walkData1[i]
-		walk2 := walkData2[i]
-
-		require.NoError(t, walk1.err)
-		require.NoError(t, walk2.err)
-
-		rel1, err := filepath.Rel(dir1, walk1.path)
-		require.NoError(t, err)
-
-		rel2, err := filepath.Rel(dir2, walk2.path)
-		require.NoError(t, err)
-
-		assert.Equal(t, rel1, rel2)
-		assert.Equal(t, walk1.info.IsDir(), walk2.info.IsDir())
-		if !walk1.info.IsDir() {
-			assertFileEqual(t, walk1.path, walk2.path)
-		} else {
-			assert.Equal(t, walk1.info.Mode(), walk2.info.Mode())
-		}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%s, %s", tt.basePath, tt.targetPath), func(t *testing.T) {
+			result := isInBasePath(tt.basePath, tt.targetPath)
+			assert.Equal(t, tt.expected, result)
+		})
 	}
-}
-
-func resetDir(t *testing.T, path string) {
-	err := os.RemoveAll(path)
-	require.NoError(t, err)
-	err = os.MkdirAll(path, 0775)
-	require.NoError(t, err)
-}
-
-func getTestDataPath(t *testing.T) string {
-	_, file, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	return filepath.Join(filepath.Dir(file), "testdata")
 }
 
 /**
@@ -113,11 +48,26 @@ func getTestDataPath(t *testing.T) string {
  * and compare it with the expectedPath under testDir.
  */
 func TestTarReadWrite(t *testing.T) {
-	testDataPath := getTestDataPath(t)
+	testDataPath := project.GetTestDataPath()
 
 	// Create empty test directories as they are't committed to git.
-	resetDir(t, filepath.Join(testDataPath, "transfer_empty_dir"))
-	resetDir(t, filepath.Join(testDataPath, "transfer_empty_dir_with_subdir", "subdir"))
+	project.ResetDir(filepath.Join(testDataPath, "transfer_empty_dir"))
+	project.ResetDir(filepath.Join(testDataPath, "transfer_empty_dir_with_subdir", "subdir"))
+
+	// Create a unix socket for testing, expected to be ignored in transfer.
+	socketPath := filepath.Join(testDataPath, "transfer_unix_socket/send/dir/socket")
+	os.Remove(socketPath)
+	assert.True(t, asserts.AreDirsEqual(
+		filepath.Join(testDataPath, "transfer_unix_socket/send/dir"),
+		filepath.Join(testDataPath, "transfer_unix_socket/expected/dir"),
+	))
+	listener, err := net.Listen("unix", socketPath)
+	require.NoError(t, err)
+	defer listener.Close()
+	assert.False(t, asserts.AreDirsEqual(
+		filepath.Join(testDataPath, "transfer_unix_socket/send/dir"),
+		filepath.Join(testDataPath, "transfer_unix_socket/expected/dir"),
+	))
 
 	tests := []struct {
 		testDir      string // relative path to testdata/
@@ -131,6 +81,8 @@ func TestTarReadWrite(t *testing.T) {
 		{testDir: "transfer_file", sendPath: "file", expectedPath: "file"},
 		{testDir: "transfer_file_with_subdir", sendPath: ".", expectedPath: "."},
 		{testDir: "transfer_link", sendPath: ".", expectedPath: "."},
+		{testDir: "transfer_link_2", sendPath: "send/dir", expectedPath: "expected/dir"},
+		{testDir: "transfer_unix_socket", sendPath: "send/dir", expectedPath: "expected/dir"},
 	}
 
 	for _, tt := range tests {
@@ -139,7 +91,7 @@ func TestTarReadWrite(t *testing.T) {
 			sendPath := filepath.Join(testPath, tt.sendPath)
 			expectedPath := filepath.Join(testPath, tt.expectedPath)
 			targetPath := filepath.Join(os.TempDir(), "p2pcp", "test", tt.testDir)
-			resetDir(t, targetPath)
+			project.ResetDir(targetPath)
 
 			info, err := os.Stat(sendPath)
 			require.NoError(t, err)
@@ -168,12 +120,12 @@ func TestTarReadWrite(t *testing.T) {
 			require.NoError(t, readErr)
 			require.NoError(t, writeErr)
 			if info.IsDir() {
-				assertDirEqual(t,
+				asserts.AssertDirsEqual(
 					filepath.Join(targetPath, filepath.Base(expectedPath)),
 					expectedPath,
 				)
 			} else {
-				assertFileEqual(t,
+				asserts.AssertFilesEqual(
 					filepath.Join(targetPath, filepath.Base(expectedPath)),
 					expectedPath,
 				)

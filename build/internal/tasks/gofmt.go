@@ -1,8 +1,8 @@
 package tasks
 
 import (
-	project "build/internal"
 	"fmt"
+	"project"
 )
 
 func GoFormatCheck() error {

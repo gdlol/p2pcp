@@ -7,4 +7,4 @@ _*
 
 node_modules/
 bin/
-go-libp2p/
+!**/testdata/**/.*
