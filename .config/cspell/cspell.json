@@ -3,7 +3,7 @@
   "enableGlobDot": true,
   "useGitignore": true,
   "gitignoreRoot": ".",
-  "ignorePaths": ["LICENSE", "*.sum", "go.mod", "pcp/"],
+  "ignorePaths": ["LICENSE", "*.sum", "go.mod"],
   "words": [
     "autorelay",
     "briandowns",
@@ -11,7 +11,6 @@
     "devcontainers",
     "drunkenbishop",
     "gofmt",
-    "IPFS",
     "libp2p",
     "mdns",
     "moul",
@@ -25,8 +24,6 @@
     "pstoremem",
     "schollz",
     "stretchr",
-    "testdata",
-    "twidth",
-    "Wrapf"
+    "testdata"
   ]
 }
