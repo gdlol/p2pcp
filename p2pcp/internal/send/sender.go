@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"p2pcp/internal/auth"
+	"p2pcp/internal/config"
 	"p2pcp/internal/node"
 	"p2pcp/internal/transfer"
 	"sync"
@@ -96,6 +97,7 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string) error
 	slog.Info("Authenticated receiver.", "peer", authenticatedPeer)
 
 	streams := make(chan io.ReadWriteCloser, 1)
+	cfg := config.GetConfig()
 	channel := transfer.NewChannel(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 		select {
 		case stream := <-streams:
@@ -103,7 +105,7 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string) error
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
-	}, transfer.DefaultPayloadSize)
+	}, int(cfg.PayloadSize))
 	defer func() {
 		if err := channel.Close(); err != nil {
 			slog.Debug("Error closing channel.", "error", err)

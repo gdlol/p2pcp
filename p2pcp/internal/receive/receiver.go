@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand"
 	"p2pcp/internal/auth"
+	"p2pcp/internal/config"
 	"p2pcp/internal/node"
 	"p2pcp/internal/transfer"
 	"strings"
@@ -144,9 +145,10 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 		slog.Info("Authenticated.")
 	}
 
+	cfg := config.GetConfig()
 	channel := transfer.NewChannel(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 		return getStream(transfer.Protocol)
-	}, transfer.DefaultPayloadSize)
+	}, int(cfg.PayloadSize))
 	defer func() {
 		if err := channel.Close(); err != nil {
 			slog.Debug("Error closing channel.", "error", err)

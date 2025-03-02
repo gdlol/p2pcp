@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	mathRand "math/rand"
 	"p2pcp/internal/auth"
+	"project/pkg/project"
 	"slices"
 	"time"
 
@@ -228,7 +229,7 @@ func NewNode(ctx context.Context, privateMode bool, options ...libp2p.Option) (N
 	}
 	defer closeIfError(dht)
 
-	mdnsService := createMdnsService(ctx, host, "p2pcp")
+	mdnsService := createMdnsService(ctx, host, project.Name)
 	defer closeIfError(mdnsService)
 
 	node := &node{

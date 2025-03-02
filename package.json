@@ -2,11 +2,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "go run build build",
-    "format": "go run build format",
-    "go-install": "go run build install",
-    "lint": "go run build lint",
-    "test": "go run build test"
+    "build": "go run project build",
+    "format": "go run project format",
+    "go-install": "go run project install",
+    "lint": "go run project lint",
+    "restore": "go run project restore",
+    "sync": "go run project sync",
+    "test": "go run project test"
   },
   "dependencies": {
     "cspell": "^8.17.3",

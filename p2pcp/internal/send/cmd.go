@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"p2pcp/internal/auth"
+	"project/pkg/project"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -52,9 +53,9 @@ func Send(ctx context.Context, path string, strict bool, private bool) error {
 	fmt.Println("Please run the following command on receiver side:")
 	fmt.Println()
 	if private {
-		fmt.Println("p2pcp", "receive", id, secret, "--private")
+		fmt.Println(project.Name, "receive", id, secret, "--private")
 	} else {
-		fmt.Println("p2pcp", "receive", id, secret)
+		fmt.Println(project.Name, "receive", id, secret)
 	}
 	fmt.Println()
 

@@ -7,6 +7,7 @@ import (
 )
 
 func TestGetBootstrapPeers(t *testing.T) {
-	peers := getBootstrapPeers()
+	peers, err := getBootstrapPeers()
+	assert.NoError(t, err)
 	assert.NotEmpty(t, peers)
 }

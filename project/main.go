@@ -1,9 +1,9 @@
 package main
 
 import (
-	"build/cmd"
 	"fmt"
 	"os"
+	"project/cmd"
 )
 
 func main() {

@@ -1,7 +1,7 @@
-package cmd
+package format
 
 import (
-	"build/internal/tasks"
+	"project/internal/tasks"
 
 	"github.com/spf13/cobra"
 )

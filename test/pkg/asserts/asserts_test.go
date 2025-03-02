@@ -2,25 +2,14 @@ package asserts
 
 import (
 	"path/filepath"
-	"project"
+	"project/pkg/workspace"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCheckFileEqual(t *testing.T) {
-	areFilesEqual := func(file1, file2 string) (equal bool) {
-		equal = true
-		defer func() {
-			if r := recover(); r != nil {
-				equal = false
-			}
-		}()
-		AssertFilesEqual(file1, file2)
-		return equal
-	}
-
-	testDataPath := project.GetTestDataPath()
+	testDataPath := workspace.GetTestDataPath()
 	file1 := filepath.Join(testDataPath, "transfer_dir_multiple_file", "file1")
 	file2 := filepath.Join(testDataPath, "transfer_dir_multiple_file", "file2")
 	file3 := filepath.Join(testDataPath, "transfer_dir_multiple_file", ".dot_file")
@@ -34,13 +23,13 @@ func TestCheckFileEqual(t *testing.T) {
 			if i == j {
 				continue
 			}
-			assert.False(t, areFilesEqual(files[i], files[j]),
+			assert.False(t, AreFilesEqual(files[i], files[j]),
 				"files %s and %s should not be equal", files[i], files[j])
 		}
 	}
 
 	file7 := filepath.Join(testDataPath, "transfer_file_with_subdir", "file")
 	file8 := filepath.Join(testDataPath, "transfer_file_with_subdir", "subdir", "file")
-	assert.True(t, areFilesEqual(file7, file8),
+	assert.True(t, AreFilesEqual(file7, file8),
 		"files %s and %s should be equal", file7, file8)
 }

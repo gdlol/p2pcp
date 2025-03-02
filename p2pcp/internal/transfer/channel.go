@@ -301,7 +301,7 @@ func (c *channel) Close() error {
 func NewChannel(ctx context.Context, getStream GetStream, payloadSize int) Channel {
 	return &channel{
 		ctx:         ctx,
-		logger:      slog.With("source", "p2pcp/transfer/channel", "payloadSize", payloadSize),
+		logger:      slog.With("source", "transfer/channel", "payloadSize", payloadSize),
 		getStream:   getStream,
 		payloadSize: payloadSize,
 		readBuffer:  newReadBuffer(payloadSize),

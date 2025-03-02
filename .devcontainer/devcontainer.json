@@ -28,5 +28,5 @@
       }
     }
   },
-  "onCreateCommand": "pnpm install"
+  "onCreateCommand": "pnpm install && pnpm restore"
 }

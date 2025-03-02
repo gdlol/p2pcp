@@ -13,6 +13,7 @@
     "gofmt",
     "libp2p",
     "mdns",
+    "modfile",
     "moul",
     "multiaddr",
     "Multiaddrs",
@@ -24,6 +25,7 @@
     "pstoremem",
     "schollz",
     "stretchr",
-    "testdata"
+    "testdata",
+    "workfile"
   ]
 }

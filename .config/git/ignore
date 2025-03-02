@@ -6,5 +6,6 @@ _*
 !**/.config/**
 
 node_modules/
+go.work.sum
 bin/
 !**/testdata/**/.*

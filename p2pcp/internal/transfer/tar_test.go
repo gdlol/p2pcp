@@ -6,7 +6,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"project"
+	"project/pkg/project"
+	"project/pkg/workspace"
 	"sync"
 	"test/pkg/asserts"
 	"testing"
@@ -48,11 +49,11 @@ func TestIsInBasePath(t *testing.T) {
  * and compare it with the expectedPath under testDir.
  */
 func TestTarReadWrite(t *testing.T) {
-	testDataPath := project.GetTestDataPath()
+	testDataPath := workspace.GetTestDataPath()
 
 	// Create empty test directories as they are't committed to git.
-	project.ResetDir(filepath.Join(testDataPath, "transfer_empty_dir"))
-	project.ResetDir(filepath.Join(testDataPath, "transfer_empty_dir_with_subdir", "subdir"))
+	workspace.ResetDir(filepath.Join(testDataPath, "transfer_empty_dir"))
+	workspace.ResetDir(filepath.Join(testDataPath, "transfer_empty_dir_with_subdir", "subdir"))
 
 	// Create a unix socket for testing, expected to be ignored in transfer.
 	socketPath := filepath.Join(testDataPath, "transfer_unix_socket/send/dir/socket")
@@ -90,8 +91,8 @@ func TestTarReadWrite(t *testing.T) {
 			testPath := filepath.Join(testDataPath, tt.testDir)
 			sendPath := filepath.Join(testPath, tt.sendPath)
 			expectedPath := filepath.Join(testPath, tt.expectedPath)
-			targetPath := filepath.Join(os.TempDir(), "p2pcp", "test", tt.testDir)
-			project.ResetDir(targetPath)
+			targetPath := filepath.Join(os.TempDir(), project.Name, "test", tt.testDir)
+			workspace.ResetDir(targetPath)
 
 			info, err := os.Stat(sendPath)
 			require.NoError(t, err)
