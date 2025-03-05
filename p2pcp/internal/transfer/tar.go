@@ -63,7 +63,7 @@ func readFile(header *tar.Header, reader io.Reader, path string) error {
 	return nil
 }
 
-func ReadTar(r io.Reader, basePath string) error {
+func readTar(r io.Reader, basePath string) error {
 	basePath, err := filepath.Abs(basePath)
 	if err != nil {
 		return fmt.Errorf("error getting absolute path for %s: %w", basePath, err)
@@ -182,7 +182,7 @@ func writeFile(header *tar.Header, writer *tar.Writer, path string) error {
 	return nil
 }
 
-func WriteTar(w io.Writer, basePath string) error {
+func writeTar(w io.Writer, basePath string) error {
 	basePath, err := filepath.Abs(basePath)
 	if err != nil {
 		return fmt.Errorf("error getting absolute path for %s: %w", basePath, err)

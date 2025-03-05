@@ -44,11 +44,10 @@ func TestIsInBasePath(t *testing.T) {
 	}
 }
 
-/**
- * For each test case, send the sendPath under testDir to a tmp directory,
- * and compare it with the expectedPath under testDir.
- */
-func TestTarReadWrite(t *testing.T) {
+type readFunc func(r io.Reader, basePath string) error
+type writeFunc func(w io.Writer, basePath string) error
+
+func testReadWrite(t *testing.T, read readFunc, write writeFunc) {
 	testDataPath := workspace.GetTestDataPath()
 
 	// Create empty test directories as they are't committed to git.
@@ -108,13 +107,13 @@ func TestTarReadWrite(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				defer pipeReader.Close()
-				readErr = ReadTar(pipeReader, targetPath)
+				readErr = read(pipeReader, targetPath)
 			}()
 
 			go func() {
 				defer wg.Done()
 				defer pipeWriter.Close()
-				writeErr = WriteTar(pipeWriter, sendPath)
+				writeErr = write(pipeWriter, sendPath)
 			}()
 
 			wg.Wait()
@@ -133,4 +132,12 @@ func TestTarReadWrite(t *testing.T) {
 			}
 		})
 	}
+}
+
+/**
+ * For each test case, send the sendPath under testDir to a tmp directory,
+ * and compare it with the expectedPath under testDir.
+ */
+func TestTarReadWrite(t *testing.T) {
+	testReadWrite(t, readTar, writeTar)
 }

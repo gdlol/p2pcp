@@ -151,7 +151,7 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 		}
 	}()
 
-	err = transfer.ReadTar(channel, basePath)
+	err = transfer.ReadZip(channel, basePath)
 	if err != nil {
 		return fmt.Errorf("error receiving tar: %w", err)
 	}

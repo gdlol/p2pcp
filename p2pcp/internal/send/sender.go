@@ -127,7 +127,7 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string) error
 	})
 	defer host.RemoveStreamHandler(transfer.Protocol)
 
-	err := transfer.WriteTar(channel, path)
+	err := transfer.WriteZip(channel, path)
 	if err != nil {
 		return fmt.Errorf("error sending path %s: %w", path, err)
 	}
