@@ -1,7 +1,7 @@
 // spell-checker:ignore esbenp
 {
   "name": "p2pcp",
-  "dockerComposeFile": "docker-compose.yml",
+  "dockerComposeFile": "compose.yaml",
   "service": "devcontainer",
   "remoteUser": "dev",
   "overrideCommand": true,
@@ -9,8 +9,8 @@
   "features": {
     "ghcr.io/devcontainer-config/features/user-init:2": {},
     "ghcr.io/devcontainer-config/features/dot-config:2": {},
-    "ghcr.io/devcontainers/features/go:1": { "version": "1.24" },
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/go:1": { "version": "1.24" }
   },
   "customizations": {
     "vscode": {

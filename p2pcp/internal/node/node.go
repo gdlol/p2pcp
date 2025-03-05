@@ -16,9 +16,11 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	coreRouting "github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/discovery/backoff"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	b58 "github.com/mr-tron/base58/base58"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -115,7 +117,12 @@ func findPeersForAutoRelay(ctx context.Context, n node) {
 		mathRand.NewSource(0))
 
 	for ctx.Err() == nil {
-		num := <-n.peerSourceLimit
+		var num int
+		select {
+		case <-ctx.Done():
+			return
+		case num = <-n.peerSourceLimit:
+		}
 
 		// Get random peers from DHT.
 		b := backoffStrategy()
@@ -197,18 +204,28 @@ func NewNode(ctx context.Context, privateMode bool, options ...libp2p.Option) (N
 
 	peerSource := make(chan peer.AddrInfo)
 	peerSourceLimit := make(chan int, 1)
+	routing := &dhtRouting{}
 
 	if privateMode {
-		options = append([]libp2p.Option{libp2p.ConnectionGater(&privateAddressGater{})}, options...)
+		options = append([]libp2p.Option{libp2p.ConnectionGater(privateAddressGater{})}, options...)
 	} else {
 		options = append([]libp2p.Option{
 			libp2p.EnableAutoNATv2(),
 			libp2p.EnableHolePunching(),
-			libp2p.EnableAutoRelayWithPeerSource(func(ctx context.Context, num int) <-chan peer.AddrInfo {
-				peerSourceLimit <- num
-				return peerSource
+			libp2p.EnableAutoRelayWithPeerSource(
+				func(ctx context.Context, num int) <-chan peer.AddrInfo {
+					select {
+					case peerSourceLimit <- num:
+					case <-ctx.Done():
+						close(peerSource)
+					}
+					return peerSource
+				},
+				autorelay.WithBootDelay(6*time.Second)),
+			libp2p.Routing(func(host.Host) (coreRouting.PeerRouting, error) {
+				return routing, nil
 			}),
-			libp2p.ForceReachabilityPrivate(), // Force auto relay to start
+			libp2p.ForceReachabilityPrivate(), // Force auto relay to start,
 		}, options...)
 	}
 
@@ -228,6 +245,7 @@ func NewNode(ctx context.Context, privateMode bool, options ...libp2p.Option) (N
 		return nil, fmt.Errorf("error creating DHT: %w", err)
 	}
 	defer closeIfError(dht)
+	routing.dht = dht
 
 	mdnsService := createMdnsService(ctx, host, project.Name)
 	defer closeIfError(mdnsService)

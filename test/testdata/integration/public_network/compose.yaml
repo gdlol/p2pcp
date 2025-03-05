@@ -1,0 +1,58 @@
+services:
+  server:
+    container_name: server
+    image: local/test
+    command: server
+    networks:
+      test:
+        ipv4_address: 1.0.0.127
+    volumes:
+      - config:/config
+    healthcheck:
+      test: [CMD, /test, server, ready]
+      interval: 1s
+      retries: 3
+      start_period: 1s
+      start_interval: 1s
+  sender:
+    container_name: sender
+    image: local/test
+    command: sender ${SENDER_ARGS:-send --debug --strict}
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      test:
+        ipv4_address: 1.0.0.1
+    volumes:
+      - config:/root/.config/p2pcp
+      - ../../transfer_file_with_subdir:/testdata/transfer_file_with_subdir
+    environment:
+      - SENDER_DIR=${SENDER_DIR:-/data}
+  receiver:
+    container_name: receiver
+    image: local/test
+    command: receiver
+    depends_on:
+      sender:
+        condition: service_started
+    networks:
+      test:
+        ipv4_address: 1.0.0.2
+    volumes:
+      - config:/root/.config/p2pcp
+      - /tmp/p2pcp/integration/receiver/data:/data
+      - ../../transfer_file_with_subdir:/testdata/transfer_file_with_subdir
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - RECEIVER_STDIN=${RECEIVER_STDIN:-'""'}
+networks:
+  test:
+    internal: true
+    ipam:
+      config:
+        - subnet: "1.0.0.0/16"
+          ip_range: "1.0.0.0/24"
+          gateway: "1.0.0.254"
+volumes:
+  config:

@@ -9,8 +9,10 @@
     "briandowns",
     "devcontainer",
     "devcontainers",
+    "distroless",
     "drunkenbishop",
     "gofmt",
+    "healthcheck",
     "libp2p",
     "mdns",
     "modfile",
@@ -24,6 +26,7 @@
     "progressbar",
     "pstoremem",
     "schollz",
+    "stdcopy",
     "stretchr",
     "testdata",
     "workfile"

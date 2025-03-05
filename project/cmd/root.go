@@ -13,9 +13,10 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:           "build",
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	Use:                "project",
+	SilenceUsage:       true,
+	SilenceErrors:      true,
+	DisableFlagParsing: true,
 }
 
 func Execute() error {

@@ -6,9 +6,9 @@ import (
 	"io"
 	"log/slog"
 	"p2pcp/internal/auth"
-	"p2pcp/internal/config"
 	"p2pcp/internal/node"
 	"p2pcp/internal/transfer"
+	"p2pcp/pkg/config"
 	"sync"
 	"time"
 

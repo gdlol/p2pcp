@@ -3,15 +3,13 @@ package node
 import (
 	"context"
 	"fmt"
-	"p2pcp/internal/config"
-	"slices"
+	"p2pcp/pkg/config"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
 )
 
 func getBootstrapPeers() ([]peer.AddrInfo, error) {
@@ -40,13 +38,7 @@ func createDHT(ctx context.Context, host host.Host) (*dual.DHT, error) {
 	if err != nil {
 		return nil, err
 	}
-	dualDHT, err := dual.New(ctx, host,
-		dual.DHTOption(dht.BootstrapPeers(bootstrapPeers...)),
-		dual.WanDHTOption(dht.AddressFilter(func(m []multiaddr.Multiaddr) []multiaddr.Multiaddr {
-			return slices.DeleteFunc(m, func(addr multiaddr.Multiaddr) bool {
-				return !manet.IsPublicAddr(addr)
-			})
-		})))
+	dualDHT, err := dual.New(ctx, host, dual.DHTOption(dht.BootstrapPeers(bootstrapPeers...)))
 	if err != nil {
 		return nil, fmt.Errorf("error creating DHT: %w", err)
 	}

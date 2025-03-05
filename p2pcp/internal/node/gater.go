@@ -1,6 +1,9 @@
 package node
 
+// spell-checker: ignore connmgr
+
 import (
+	"github.com/libp2p/go-libp2p/core/connmgr"
 	"github.com/libp2p/go-libp2p/core/control"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -10,22 +13,24 @@ import (
 
 type privateAddressGater struct{}
 
-func (gater *privateAddressGater) InterceptPeerDial(p peer.ID) (allow bool) {
+func (gater privateAddressGater) InterceptPeerDial(p peer.ID) (allow bool) {
 	return true
 }
 
-func (gater *privateAddressGater) InterceptAddrDial(_ peer.ID, addr ma.Multiaddr) (allow bool) {
+func (gater privateAddressGater) InterceptAddrDial(_ peer.ID, addr ma.Multiaddr) (allow bool) {
 	return manet.IsPrivateAddr(addr)
 }
 
-func (gater *privateAddressGater) InterceptAccept(addrs network.ConnMultiaddrs) (allow bool) {
+func (gater privateAddressGater) InterceptAccept(addrs network.ConnMultiaddrs) (allow bool) {
 	return manet.IsPrivateAddr(addrs.RemoteMultiaddr())
 }
 
-func (gater *privateAddressGater) InterceptSecured(_ network.Direction, _ peer.ID, addrs network.ConnMultiaddrs) (allow bool) {
+func (gater privateAddressGater) InterceptSecured(_ network.Direction, _ peer.ID, addrs network.ConnMultiaddrs) (allow bool) {
 	return manet.IsPrivateAddr(addrs.RemoteMultiaddr())
 }
 
-func (gater *privateAddressGater) InterceptUpgraded(conn network.Conn) (allow bool, reason control.DisconnectReason) {
+func (gater privateAddressGater) InterceptUpgraded(conn network.Conn) (allow bool, reason control.DisconnectReason) {
 	return manet.IsPrivateAddr(conn.RemoteMultiaddr()), 0
 }
+
+var _ connmgr.ConnectionGater = privateAddressGater{}

@@ -8,9 +8,9 @@ import (
 	"math"
 	"math/rand"
 	"p2pcp/internal/auth"
-	"p2pcp/internal/config"
 	"p2pcp/internal/node"
 	"p2pcp/internal/transfer"
+	"p2pcp/pkg/config"
 	"strings"
 	"time"
 
@@ -57,10 +57,6 @@ func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
 		} else {
 			validPeers := []peer.AddrInfo{}
 			for addrInfo := range peers {
-				if len(addrInfo.Addrs) == 0 {
-					slog.Warn("Found sender with no addresses.", "sender", addrInfo.ID)
-					continue
-				}
 				nodeID, err := node.GetNodeID(addrInfo.ID)
 				if err != nil {
 					slog.Warn("Error getting node ID.", "sender", addrInfo)

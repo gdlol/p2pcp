@@ -8,4 +8,5 @@ _*
 node_modules/
 go.work.sum
 bin/
+logs/
 !**/testdata/**/.*

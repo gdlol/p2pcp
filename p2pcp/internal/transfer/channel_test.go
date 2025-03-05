@@ -60,11 +60,10 @@ func TestChannel(t *testing.T) {
 		limits = append(limits, i)
 	}
 
-	var testWg sync.WaitGroup
 	for _, limit := range limits {
-		testWg.Add(1)
-		go t.Run(fmt.Sprint(limit), func(t *testing.T) {
-			defer testWg.Done()
+		limit := limit
+		t.Run(fmt.Sprint(limit), func(t *testing.T) {
+			t.Parallel()
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 
@@ -186,5 +185,4 @@ func TestChannel(t *testing.T) {
 			}
 		})
 	}
-	testWg.Wait()
 }

@@ -251,10 +251,10 @@ func (c *channel) close() error {
 
 		packet, err := readPacket(stream, buffer)
 		if err != nil {
-			if err == io.EOF {
+			if err == io.EOF || c.readClosed {
 				break
 			}
-			c.logger.Debug("Error reading ACK/FIN packet.", "error", err)
+			c.logger.Debug("Error reading FIN packet.", "error", err)
 			c.closeStream()
 			continue
 		}
