@@ -10,8 +10,8 @@ import (
 var SenderCmd = &cobra.Command{
 	Use:                "sender",
 	DisableFlagParsing: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		senderDir := os.Getenv("SENDER_DIR")
-		return sender.Run(cmd.Context(), senderDir, args)
+		sender.Run(cmd.Context(), senderDir, args)
 	},
 }

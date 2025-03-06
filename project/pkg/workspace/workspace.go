@@ -15,6 +15,13 @@ func Check(err error) {
 	}
 }
 
+func GetWorkspacesPath() string {
+	projectPath := GetProjectPath()
+	workspacesPath, err := filepath.Abs(filepath.Join(projectPath, ".."))
+	Check(err)
+	return workspacesPath
+}
+
 func GetProjectPath() string {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {

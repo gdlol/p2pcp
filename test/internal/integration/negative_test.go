@@ -101,8 +101,7 @@ func TestPrivateNetwork_WrongSecret_Strict(t *testing.T) {
 		defer restoreReceiveSecret()
 
 		// Retry with correct secret
-		err := workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "run", "receiver")
-		workspace.Check(err)
+		workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "run", "receiver")
 
 		docker.WaitContainer(ctx, "sender")
 		docker.AssertContainerLogContains(ctx, "sender", "Sending...", "Done.")

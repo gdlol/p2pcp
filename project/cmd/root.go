@@ -8,6 +8,7 @@ import (
 	"project/cmd/restore"
 	"project/cmd/sync"
 	"project/cmd/test"
+	"project/cmd/update"
 
 	"github.com/spf13/cobra"
 )
@@ -32,4 +33,5 @@ func init() {
 	rootCmd.AddCommand(restore.RestoreCmd)
 	rootCmd.AddCommand(sync.SyncCmd)
 	rootCmd.AddCommand(test.TestCmd)
+	rootCmd.AddCommand(update.UpdateCmd)
 }

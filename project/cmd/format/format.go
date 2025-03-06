@@ -8,12 +8,8 @@ import (
 
 var FormatCmd = &cobra.Command{
 	Use: "format",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		err := tasks.PrettierFormat()
-		if err != nil {
-			return err
-		}
-		err = tasks.GoFormat()
-		return err
+	Run: func(cmd *cobra.Command, args []string) {
+		tasks.PrettierFormat()
+		tasks.GoFormat()
 	},
 }

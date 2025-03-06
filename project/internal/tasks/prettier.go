@@ -1,13 +1,17 @@
 package tasks
 
-import "project/pkg/workspace"
+import (
+	"project/pkg/workspace"
+)
 
-func PrettierCheck() error {
+func PrettierCheck() {
+	workspacesPath := workspace.GetWorkspacesPath()
 	projectPath := workspace.GetProjectPath()
-	return workspace.Run("pnpm", "prettier", "--check", projectPath)
+	workspace.RunWithChdir(workspacesPath, "pnpm", "prettier", "--check", projectPath)
 }
 
-func PrettierFormat() error {
+func PrettierFormat() {
+	workspacesPath := workspace.GetWorkspacesPath()
 	projectPath := workspace.GetProjectPath()
-	return workspace.Run("pnpm", "prettier", "--write", projectPath)
+	workspace.RunWithChdir(workspacesPath, "pnpm", "prettier", "--write", projectPath)
 }

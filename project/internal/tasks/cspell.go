@@ -2,7 +2,7 @@ package tasks
 
 import "project/pkg/workspace"
 
-func CSpell() error {
+func CSpell() {
 	projectPath := workspace.GetProjectPath()
-	return workspace.Run("pnpm", "cspell", projectPath)
+	workspace.Run("pnpm", "cspell", projectPath)
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func Run() error {
+func Run() {
 	os.Setenv("CGO_ENABLED", "0")
 	projectPath := workspace.GetProjectPath()
 	workspace.ResetDir(filepath.Join(projectPath, "bin"))
@@ -19,17 +19,13 @@ func Run() error {
 		if moduleName == project.Name {
 			output = filepath.Join(projectPath, "bin", moduleName)
 		}
-		err := workspace.Run("go", "build", "-o", output, module)
-		if err != nil {
-			return err
-		}
+		workspace.Run("go", "build", "-o", output, module)
 	}
-	return nil
 }
 
 var BuildCmd = &cobra.Command{
 	Use: "build",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return Run()
+	Run: func(cmd *cobra.Command, args []string) {
+		Run()
 	},
 }

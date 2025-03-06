@@ -10,8 +10,8 @@ import (
 
 var InstallCmd = &cobra.Command{
 	Use: "install",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		projectPath := workspace.GetProjectPath()
-		return workspace.Run("go", "install", filepath.Join(projectPath, project.Name))
+		workspace.Run("go", "install", filepath.Join(projectPath, project.Name))
 	},
 }

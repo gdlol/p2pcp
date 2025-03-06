@@ -1,10 +1,10 @@
 module project
 
-go 1.24.0
+go 1.24.1
 
 require (
 	github.com/spf13/cobra v1.9.1
-	golang.org/x/mod v0.23.0
+	golang.org/x/mod v0.24.0
 )
 
 require (

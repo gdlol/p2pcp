@@ -16,9 +16,10 @@ func getTestDataPath() string {
 }
 
 func sudoResetDir(path string) {
-	workspace.Run("sudo", "rm", "--recursive", path)
-	err := workspace.Run("mkdir", "--parents", path)
-	workspace.Check(err)
+	if _, err := os.Stat(path); err == nil {
+		workspace.Run("sudo", "rm", "--recursive", path)
+	}
+	workspace.Run("mkdir", "--parents", path)
 }
 
 func setEnv(key, value string) (restore func()) {

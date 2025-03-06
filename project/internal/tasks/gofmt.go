@@ -1,24 +1,20 @@
 package tasks
 
 import (
-	"fmt"
 	"project/pkg/workspace"
 )
 
-func GoFormatCheck() error {
+func GoFormatCheck() {
 	projectPath := workspace.GetProjectPath()
-	output, err := workspace.GetOutput("gofmt", "-l", projectPath)
-	if err != nil {
-		return err
-	}
+	output := workspace.GetOutput("gofmt", "-l", projectPath)
+
 	if output != "" {
 		workspace.Run("gofmt", "-d", projectPath)
-		return fmt.Errorf("gofmt check failed")
+		panic("gofmt check failed")
 	}
-	return nil
 }
 
-func GoFormat() error {
+func GoFormat() {
 	projectPath := workspace.GetProjectPath()
-	return workspace.Run("gofmt", "-l", "-w", projectPath)
+	workspace.Run("gofmt", "-l", "-w", projectPath)
 }

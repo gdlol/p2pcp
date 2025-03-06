@@ -8,11 +8,12 @@
     "lint": "go run project lint",
     "restore": "go run project restore",
     "sync": "go run project sync",
-    "test": "go run project test"
+    "test": "go run project test",
+    "update": "go run project update"
   },
   "dependencies": {
-    "cspell": "^8.17.3",
-    "prettier": "^3.5.1",
-    "prettier-plugin-packagejson": "^2.5.8"
+    "cspell": "^8.17.5",
+    "prettier": "^3.5.3",
+    "prettier-plugin-packagejson": "^2.5.10"
   }
 }

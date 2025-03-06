@@ -35,7 +35,7 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "show debug logs")
 	rootCmd.PersistentFlags().BoolP("private", "p", false, "only connect to private networks")
-	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		config.LoadConfig()
 
 		debug, _ := cmd.Flags().GetBool("debug")
@@ -44,8 +44,6 @@ func init() {
 		} else {
 			slog.SetLogLoggerLevel(slog.LevelWarn)
 		}
-
-		return nil
 	}
 
 	rootCmd.AddCommand(send.SendCmd)

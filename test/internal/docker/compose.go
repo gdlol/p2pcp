@@ -13,27 +13,23 @@ import (
 )
 
 func ComposeUp(ctx context.Context, composeFilePath string) {
-	err := workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "up", "--detach")
-	workspace.Check(err)
+	workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "up", "--detach")
 }
 
 func ComposeStop(ctx context.Context, composeFilePath string) {
-	err := workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "stop")
-	workspace.Check(err)
+	workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "stop")
 }
 
 func ComposeDown(ctx context.Context, composeFilePath string) {
-	err := workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath),
+	workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath),
 		"docker", "compose", "down", "--volumes", "--remove-orphans")
-	workspace.Check(err)
 }
 
 func ComposeCollectCoverage(ctx context.Context) {
 	coveragePath := filepath.Join(workspace.GetProjectPath(), "coverage/integration")
 	err := os.MkdirAll(coveragePath, 0755)
 	workspace.Check(err)
-	err = workspace.RunCtx(ctx, "docker", "cp", "receiver:/coverage/.", coveragePath)
-	workspace.Check(err)
+	workspace.RunCtx(ctx, "docker", "cp", "receiver:/coverage/.", coveragePath)
 }
 
 func DumpComposeLogs(ctx context.Context, composeFilePath string, testName string) {

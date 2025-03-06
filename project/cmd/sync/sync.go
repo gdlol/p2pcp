@@ -6,22 +6,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func Run() {
+	projectPath := workspace.GetProjectPath()
+	workspace.RunWithChdir(projectPath, "go", "work", "sync")
+
+	for _, module := range workspace.GetModules() {
+		workspace.RunWithChdir(module, "go", "mod", "tidy")
+	}
+}
+
 var SyncCmd = &cobra.Command{
 	Use: "sync",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		projectPath := workspace.GetProjectPath()
-		err := workspace.RunWithChdir(projectPath, "go", "work", "sync")
-		if err != nil {
-			return err
-		}
-
-		for _, module := range workspace.GetModules() {
-			err := workspace.RunWithChdir(module, "go", "mod", "tidy")
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
+	Run: func(cmd *cobra.Command, args []string) {
+		Run()
 	},
 }
