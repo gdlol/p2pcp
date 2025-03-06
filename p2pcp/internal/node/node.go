@@ -234,6 +234,7 @@ func NewNode(ctx context.Context, privateMode bool, options ...libp2p.Option) (N
 		return nil, fmt.Errorf("error creating host: %w", err)
 	}
 	defer closeIfError(host)
+	routing.host = host
 
 	id, err := GetNodeID(host.ID())
 	if err != nil {

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"test/cmd/integration"
 	"test/cmd/receiver"
 	"test/cmd/sender"
 	"test/cmd/server"
@@ -26,5 +25,4 @@ func init() {
 	rootCmd.AddCommand(server.ServerCmd)
 	rootCmd.AddCommand(sender.SenderCmd)
 	rootCmd.AddCommand(receiver.ReceiverCmd)
-	rootCmd.AddCommand(integration.IntegrationCmd)
 }

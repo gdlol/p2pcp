@@ -24,9 +24,9 @@ func Send(ctx context.Context, path string, strict bool, private bool) error {
 		return fmt.Errorf("error creating sender: %w", err)
 	}
 	defer sender.Close()
-	node := sender.GetNode()
+	n := sender.GetNode()
 
-	err = node.StartMdns()
+	err = n.StartMdns()
 	if err != nil {
 		return fmt.Errorf("error starting mDNS service: %w", err)
 	}
@@ -39,14 +39,14 @@ func Send(ctx context.Context, path string, strict bool, private bool) error {
 	}
 
 	if !strict {
-		fmt.Println("Node ID:", node.ID())
-		room := drunkenbishop.FromBytes(node.ID().Bytes())
+		fmt.Println("Node ID:", n.ID())
+		room := drunkenbishop.FromBytes(n.ID().Bytes())
 		fmt.Println(room)
 	}
 
 	var id string
 	if strict {
-		id = node.ID().String()
+		id = n.ID().String()
 	} else {
 		id = sender.GetAdvertiseTopic()
 	}
@@ -59,9 +59,14 @@ func Send(ctx context.Context, path string, strict bool, private bool) error {
 	}
 	fmt.Println()
 
-	fmt.Println("Sending...")
 	secretHash := auth.ComputeHash([]byte(secret))
-	err = sender.Send(ctx, secretHash, path)
+	receiver, err := sender.WaitForReceiver(ctx, secretHash, path)
+	if err != nil {
+		return fmt.Errorf("error waiting for receiver: %w", err)
+	}
+
+	fmt.Println("Sending...")
+	err = sender.Send(ctx, receiver, path)
 	if err == nil {
 		fmt.Println("Done.")
 	}

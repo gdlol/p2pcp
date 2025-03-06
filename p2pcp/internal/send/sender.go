@@ -21,7 +21,8 @@ import (
 type Sender interface {
 	GetNode() node.Node
 	GetAdvertiseTopic() string
-	Send(ctx context.Context, secretHash []byte, path string) error
+	WaitForReceiver(ctx context.Context, secretHash []byte, path string) (peer.ID, error)
+	Send(ctx context.Context, receiver peer.ID, path string) error
 	Close()
 }
 
@@ -47,10 +48,7 @@ func (s *sender) Close() {
 	s.node.Close()
 }
 
-func (s *sender) Send(ctx context.Context, secretHash []byte, path string) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
+func (s *sender) WaitForReceiver(ctx context.Context, secretHash []byte, path string) (peer.ID, error) {
 	n := s.node
 	host := n.GetHost()
 
@@ -88,13 +86,22 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string) error
 		}
 	})
 
-	authenticatedPeer = <-authenticate
-	host.RemoveStreamHandler(auth.Protocol)
-	if authenticatedPeer == "" {
-		cancel()
-		return fmt.Errorf("failed to authenticate receiver")
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	case authenticatedPeer = <-authenticate:
+		host.RemoveStreamHandler(auth.Protocol)
+		if authenticatedPeer == "" {
+			return "", fmt.Errorf("failed to authenticate receiver")
+		} else {
+			return authenticatedPeer, nil
+		}
 	}
-	slog.Info("Authenticated receiver.", "peer", authenticatedPeer)
+}
+
+func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) error {
+	n := s.node
+	host := n.GetHost()
 
 	streams := make(chan io.ReadWriteCloser, 1)
 	cfg := config.GetConfig()
@@ -114,7 +121,7 @@ func (s *sender) Send(ctx context.Context, secretHash []byte, path string) error
 	host.SetStreamHandler(transfer.Protocol, func(stream network.Stream) {
 		slog.Debug("Received new transfer stream.")
 		remotePeer := stream.Conn().RemotePeer()
-		if authenticatedPeer != remotePeer {
+		if receiver != remotePeer {
 			slog.Warn("Unauthorized transfer stream.")
 			stream.Close()
 		} else {

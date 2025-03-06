@@ -45,10 +45,6 @@ func readDir(header *tar.Header, path string) error {
 
 func readFile(header *tar.Header, reader io.Reader, path string) error {
 	fileInfo := header.FileInfo()
-	err := os.MkdirAll(filepath.Dir(path), 0755)
-	if err != nil {
-		return fmt.Errorf("error creating directory for %s: %w", path, err)
-	}
 
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileInfo.Mode().Perm())
 	if err != nil {

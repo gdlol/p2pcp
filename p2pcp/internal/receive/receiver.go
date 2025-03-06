@@ -72,6 +72,8 @@ func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
 			if len(validPeers) == 1 {
 				sender = validPeers[0].ID
 				slog.Info("Found sender.", "sender", sender)
+				// Mark sender as candidate for DHT routing.
+				r.node.GetHost().Peerstore().Put(sender, node.PeerRoutingTag, struct{}{})
 				break
 			} else if len(validPeers) > 1 {
 				slog.Warn("Found multiple peers advertising topic.", "topic", id, "peers", validPeers)

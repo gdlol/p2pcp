@@ -48,6 +48,9 @@ var ReceiveCmd = &cobra.Command{
 				return fmt.Errorf("error getting absolute path: %w", err)
 			}
 		}
+		if _, err := os.Stat(filepath.Dir(path)); os.IsNotExist(err) {
+			return fmt.Errorf("path: directory %s does not exist", filepath.Dir(path))
+		}
 
 		private, _ := cmd.Flags().GetBool("private")
 

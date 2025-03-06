@@ -13,6 +13,7 @@ var ReceiverCmd = &cobra.Command{
 		receiverDir := os.Getenv("RECEIVER_DIR")
 		stdin := os.Getenv("RECEIVER_STDIN")
 		targetPath := os.Getenv("RECEIVER_TARGET_PATH")
-		return receiver.Run(cmd.Context(), receiverDir, stdin, targetPath)
+		receiverSecret := os.Getenv("RECEIVER_SECRET")
+		return receiver.Run(cmd.Context(), receiverDir, stdin, targetPath, receiverSecret)
 	},
 }

@@ -18,5 +18,7 @@ services:
       - /tmp/p2pcp/integration/receiver/data:/data
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
+      RECEIVER_DIR: ${RECEIVER_DIR:-}
       RECEIVER_STDIN: ${RECEIVER_STDIN:-}
       RECEIVER_TARGET_PATH: ${RECEIVER_TARGET_PATH:-}
+      RECEIVER_SECRET: ${RECEIVER_SECRET:-}

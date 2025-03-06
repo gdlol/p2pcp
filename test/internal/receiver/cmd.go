@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func Run(ctx context.Context, receiverDir string, stdin string, targetPath string) error {
+func Run(ctx context.Context, receiverDir string, stdin string, targetPath string, secret string) error {
 	line, err := docker.WaitForContainerLog(ctx, "sender", time.Minute, "p2pcp receive")
 	if err != nil {
 		return err
@@ -25,6 +25,9 @@ func Run(ctx context.Context, receiverDir string, stdin string, targetPath strin
 	}
 
 	args := append(cmd[1:], "--debug")
+	if len(secret) > 0 {
+		args[2] = secret
+	}
 	if len(targetPath) > 0 {
 		args = append(args, targetPath)
 	}
