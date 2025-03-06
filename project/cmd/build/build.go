@@ -16,7 +16,7 @@ func Run() error {
 	for _, module := range workspace.GetModules() {
 		moduleName := filepath.Base(module)
 		output := "/dev/null"
-		if moduleName == project.Name || moduleName == "test" {
+		if moduleName == project.Name {
 			output = filepath.Join(projectPath, "bin", moduleName)
 		}
 		err := workspace.Run("go", "build", "-o", output, module)

@@ -2,7 +2,9 @@ package auth
 
 import (
 	"encoding/hex"
+	"io"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,4 +52,59 @@ func TestGetStrongSecret(t *testing.T) {
 	}
 	assert.Len(t, secrets, 1000)
 	assert.Len(t, chars, 32)
+}
+
+type testStream struct {
+	closed bool
+}
+
+func (s *testStream) Read(p []byte) (n int, err error) {
+	for !s.closed {
+		time.Sleep(100 * time.Millisecond)
+	}
+	return 0, io.EOF
+}
+
+func (s *testStream) Write(p []byte) (n int, err error) {
+	return 0, io.ErrClosedPipe
+}
+
+func (s *testStream) Close() error {
+	s.closed = true
+	return nil
+}
+
+func TestHandleAuthenticate_Timeout(t *testing.T) {
+	stream := &testStream{}
+	secretHash := ComputeHash([]byte("test"))
+	timer := time.AfterFunc(authenticationTimeout, func() {})
+
+	success, err := HandleAuthenticate(stream, secretHash)
+	assert.Nil(t, success)
+	assert.Error(t, err)
+	assert.True(t, stream.closed)
+	assert.False(t, timer.Stop())
+}
+
+func TestHandleAuthenticate_ReadError(t *testing.T) {
+	stream := &testStream{}
+	secretHash := ComputeHash([]byte("test"))
+	stream.Close()
+
+	timer := time.AfterFunc(authenticationTimeout, func() {})
+	success, err := HandleAuthenticate(stream, secretHash)
+	assert.Nil(t, success)
+	assert.Error(t, err)
+	assert.Equal(t, io.EOF, err)
+	assert.True(t, timer.Stop())
+}
+
+func TestAuthenticate(t *testing.T) {
+	stream := &testStream{}
+	secretHash := ComputeHash([]byte("test"))
+	success, err := Authenticate(stream, secretHash)
+	assert.False(t, success)
+	assert.Error(t, err)
+	assert.Equal(t, io.ErrClosedPipe, err)
+	assert.True(t, stream.closed)
 }

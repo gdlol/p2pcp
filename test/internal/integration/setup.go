@@ -35,6 +35,7 @@ func runCompose(ctx context.Context, composeFilePath string, testName string) (c
 	return func() {
 		defer docker.ComposeDown(ctx, composeFilePath)
 		defer docker.DumpComposeLogs(ctx, composeFilePath, testName)
+		defer docker.ComposeCollectCoverage(ctx)
 		defer docker.ComposeStop(ctx, composeFilePath)
 	}
 }

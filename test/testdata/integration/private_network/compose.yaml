@@ -4,8 +4,10 @@ services:
     image: local/test
     command: sender ${SENDER_ARGS:-send --debug --strict --private}
     volumes:
+      - coverage:/coverage
       - ../../transfer_file_with_subdir:/testdata/transfer_file_with_subdir
     environment:
+      GOCOVERDIR: /coverage
       SENDER_DIR: ${SENDER_DIR:-/data}
   receiver:
     container_name: receiver
@@ -15,10 +17,14 @@ services:
       sender:
         condition: service_started
     volumes:
+      - coverage:/coverage
       - /tmp/p2pcp/integration/receiver/data:/data
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
+      GOCOVERDIR: /coverage
       RECEIVER_DIR: ${RECEIVER_DIR:-}
       RECEIVER_STDIN: ${RECEIVER_STDIN:-}
       RECEIVER_TARGET_PATH: ${RECEIVER_TARGET_PATH:-}
       RECEIVER_SECRET: ${RECEIVER_SECRET:-}
+volumes:
+  coverage:

@@ -25,9 +25,11 @@ services:
       test:
         ipv4_address: 1.0.0.1
     volumes:
+      - coverage:/coverage
       - config:/root/.config/p2pcp
       - ../../transfer_file_with_subdir:/testdata/transfer_file_with_subdir
     environment:
+      GOCOVERDIR: /coverage
       SENDER_DIR: ${SENDER_DIR:-}
   receiver:
     container_name: receiver
@@ -40,10 +42,12 @@ services:
       test:
         ipv4_address: 1.0.0.2
     volumes:
+      - coverage:/coverage
       - config:/root/.config/p2pcp
       - /tmp/p2pcp/integration/receiver/data:/data
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
+      GOCOVERDIR: /coverage
       RECEIVER_DIR: ${RECEIVER_DIR:-}
       RECEIVER_STDIN: ${RECEIVER_STDIN:-}
       RECEIVER_TARGET_PATH: ${RECEIVER_TARGET_PATH:-}
@@ -58,3 +62,4 @@ networks:
           gateway: "1.0.0.254"
 volumes:
   config:
+  coverage:

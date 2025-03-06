@@ -23,7 +23,16 @@ func ComposeStop(ctx context.Context, composeFilePath string) {
 }
 
 func ComposeDown(ctx context.Context, composeFilePath string) {
-	err := workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "down", "--volumes")
+	err := workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath),
+		"docker", "compose", "down", "--volumes", "--remove-orphans")
+	workspace.Check(err)
+}
+
+func ComposeCollectCoverage(ctx context.Context) {
+	coveragePath := filepath.Join(workspace.GetProjectPath(), "coverage/integration")
+	err := os.MkdirAll(coveragePath, 0755)
+	workspace.Check(err)
+	err = workspace.RunCtx(ctx, "docker", "cp", "receiver:/coverage/.", coveragePath)
 	workspace.Check(err)
 }
 
