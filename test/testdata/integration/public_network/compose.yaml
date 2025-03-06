@@ -28,7 +28,7 @@ services:
       - config:/root/.config/p2pcp
       - ../../transfer_file_with_subdir:/testdata/transfer_file_with_subdir
     environment:
-      - SENDER_DIR=${SENDER_DIR:-/data}
+      SENDER_DIR: ${SENDER_DIR:-}
   receiver:
     container_name: receiver
     image: local/test
@@ -42,10 +42,11 @@ services:
     volumes:
       - config:/root/.config/p2pcp
       - /tmp/p2pcp/integration/receiver/data:/data
-      - ../../transfer_file_with_subdir:/testdata/transfer_file_with_subdir
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - RECEIVER_STDIN=${RECEIVER_STDIN:-'""'}
+      RECEIVER_DIR: ${SENDER_DIR:-}
+      RECEIVER_STDIN: ${RECEIVER_STDIN:-}
+      RECEIVER_TARGET_PATH: ${RECEIVER_TARGET_PATH:-}
 networks:
   test:
     internal: true

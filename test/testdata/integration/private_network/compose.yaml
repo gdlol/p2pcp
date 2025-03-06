@@ -1,0 +1,22 @@
+services:
+  sender:
+    container_name: sender
+    image: local/test
+    command: sender ${SENDER_ARGS:-send --debug --strict --private}
+    volumes:
+      - ../../transfer_file_with_subdir:/testdata/transfer_file_with_subdir
+    environment:
+      SENDER_DIR: ${SENDER_DIR:-/data}
+  receiver:
+    container_name: receiver
+    image: local/test
+    command: receiver
+    depends_on:
+      sender:
+        condition: service_started
+    volumes:
+      - /tmp/p2pcp/integration/receiver/data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      RECEIVER_STDIN: ${RECEIVER_STDIN:-}
+      RECEIVER_TARGET_PATH: ${RECEIVER_TARGET_PATH:-}

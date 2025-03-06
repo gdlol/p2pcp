@@ -16,7 +16,8 @@ func TestCheckFilesEqual(t *testing.T) {
 	file4 := filepath.Join(testDataPath, "transfer_dir", "file")
 	file5 := filepath.Join(testDataPath, "transfer_file", "file")
 	file6 := filepath.Join(testDataPath, "non_exist_dir", "file")
-	files := []string{file1, file2, file3, file4, file5, file6}
+	dir1 := filepath.Join(testDataPath, "transfer_dir")
+	files := []string{file1, file2, file3, file4, file5, file6, dir1}
 
 	for i := range files {
 		for j := range files {
@@ -40,7 +41,8 @@ func TestCheckDirsEqual(t *testing.T) {
 	dir2 := filepath.Join(testDataPath, "transfer_dir_multiple_file")
 	dir3 := filepath.Join(testDataPath, "transfer_file")
 	dir4 := filepath.Join(testDataPath, "non_exist_dir")
-	dirs := []string{dir1, dir2, dir3, dir4}
+	file1 := filepath.Join(testDataPath, "transfer_dir_multiple_file", "file1")
+	dirs := []string{dir1, dir2, dir3, dir4, file1}
 
 	for i := range dirs {
 		for j := range dirs {

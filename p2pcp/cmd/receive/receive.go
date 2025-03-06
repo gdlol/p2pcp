@@ -43,7 +43,7 @@ var ReceiveCmd = &cobra.Command{
 				return fmt.Errorf("error getting current working directory: %w", err)
 			}
 		} else {
-			path, err = filepath.Abs(args[1])
+			path, err = filepath.Abs(args[2])
 			if err != nil {
 				return fmt.Errorf("error getting absolute path: %w", err)
 			}

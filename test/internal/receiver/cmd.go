@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func Run(ctx context.Context, private bool, stdin string) error {
+func Run(ctx context.Context, receiverDir string, stdin string, targetPath string) error {
 	line, err := docker.WaitForContainerLog(ctx, "sender", time.Minute, "p2pcp receive")
 	if err != nil {
 		return err
@@ -20,19 +20,22 @@ func Run(ctx context.Context, private bool, stdin string) error {
 	slog.Info(fmt.Sprintf("Received command: %s", line))
 
 	cmd := strings.Split(line, " ")
-	if len(cmd) != 4 {
+	if len(cmd) < 4 {
 		return fmt.Errorf("invalid command: %s", line)
 	}
 
 	args := append(cmd[1:], "--debug")
-	if private {
-		args = append(args, "--private")
+	if len(targetPath) > 0 {
+		args = append(args, targetPath)
 	}
 
 	fmt.Println(cmd[0], strings.Join(args, " "))
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c := exec.CommandContext(ctx, "/p2pcp", args...)
+	if len(receiverDir) > 0 {
+		c.Dir = receiverDir
+	}
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	stdinPipe, err := c.StdinPipe()

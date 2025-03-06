@@ -27,13 +27,16 @@ func init() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
 	viper.AddConfigPath(filepath.Join(xdg.ConfigHome, project.Name))
+	defaultConfig := NewConfig()
+	viper.SetDefault("BootstrapPeers", defaultConfig.BootstrapPeers)
+	viper.SetDefault("PayloadSize", defaultConfig.PayloadSize)
 }
 
 var config = NewConfig()
 
 func LoadConfig() error {
 	if err := viper.ReadInConfig(); err != nil {
-		return err
+		return nil
 	}
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {

@@ -25,7 +25,7 @@ func Run(ctx context.Context) error {
 		return err
 	}
 
-	// Generate config file for clients.
+	// Add self to bootstrap peers in config.
 	cfg := config.NewConfig()
 	bootStrapPeers := make([]string, 0, len(p2pAddrs))
 	for _, addr := range p2pAddrs {
@@ -37,6 +37,8 @@ func Run(ctx context.Context) error {
 		return err
 	}
 	fmt.Printf("config:\n%s\n", jsonConfig)
+
+	// Generate config file for clients.
 	fs, err := os.OpenFile("/config/config.json", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return err

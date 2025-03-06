@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"project/pkg/workspace"
 
@@ -14,34 +13,26 @@ import (
 )
 
 func ComposeUp(ctx context.Context, composeFilePath string) {
-	projectName := filepath.Base(filepath.Dir(composeFilePath))
-	cmd := exec.CommandContext(ctx,
-		"docker", "compose",
-		"--file", composeFilePath,
-		"--project-name", projectName,
-		"up", "-d")
-	err := cmd.Run()
+	err := workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "up", "--detach")
 	workspace.Check(err)
 }
 
 func ComposeStop(ctx context.Context, composeFilePath string) {
-	cmd := exec.CommandContext(ctx, "docker", "compose", "--file", composeFilePath, "stop")
-	err := cmd.Run()
+	err := workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "stop")
 	workspace.Check(err)
 }
 
 func ComposeDown(ctx context.Context, composeFilePath string) {
-	cmd := exec.CommandContext(ctx, "docker", "compose", "--file", composeFilePath, "down", "--volumes")
-	err := cmd.Run()
+	err := workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "down", "--volumes")
 	workspace.Check(err)
 }
 
-func DumpComposeLogs(ctx context.Context, composeFilePath string) {
+func DumpComposeLogs(ctx context.Context, composeFilePath string, testName string) {
 	cli, err := getClient()
 	workspace.Check(err)
 
 	composeProjectName := filepath.Base(filepath.Dir(composeFilePath))
-	logsPath := filepath.Join(workspace.GetProjectPath(), "logs", "integration", composeProjectName)
+	logsPath := filepath.Join(workspace.GetProjectPath(), "logs", "integration", testName)
 	workspace.ResetDir(logsPath)
 
 	filter := filters.NewArgs()
@@ -69,10 +60,4 @@ func DumpComposeLogs(ctx context.Context, composeFilePath string) {
 		_, err = stdcopy.StdCopy(stdOutFile, stdErrFile, reader)
 		workspace.Check(err)
 	}
-}
-
-func ComposeCleanup(ctx context.Context, composeFilePath string) {
-	defer ComposeDown(ctx, composeFilePath)
-	defer DumpComposeLogs(ctx, composeFilePath)
-	defer ComposeStop(ctx, composeFilePath)
 }

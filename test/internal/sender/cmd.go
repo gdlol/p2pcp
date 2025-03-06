@@ -6,7 +6,9 @@ import (
 )
 
 func Run(ctx context.Context, senderDir string, args []string) error {
-	restore := workspace.Chdir(senderDir)
-	defer restore()
-	return workspace.Run("/p2pcp", args...)
+	if len(senderDir) > 0 {
+		return workspace.RunCtxWithChdir(ctx, senderDir, "/p2pcp", args...)
+	} else {
+		return workspace.RunCtx(ctx, "/p2pcp", args...)
+	}
 }

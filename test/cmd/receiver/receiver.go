@@ -10,8 +10,9 @@ import (
 var ReceiverCmd = &cobra.Command{
 	Use: "receiver",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		private := os.Getenv("RECEIVER_PRIVATE") == "true"
+		receiverDir := os.Getenv("RECEIVER_DIR")
 		stdin := os.Getenv("RECEIVER_STDIN")
-		return receiver.Run(cmd.Context(), private, stdin)
+		targetPath := os.Getenv("RECEIVER_TARGET_PATH")
+		return receiver.Run(cmd.Context(), receiverDir, stdin, targetPath)
 	},
 }
