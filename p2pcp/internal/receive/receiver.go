@@ -10,7 +10,7 @@ import (
 	"p2pcp/internal/auth"
 	"p2pcp/internal/node"
 	"p2pcp/internal/transfer"
-	"p2pcp/pkg/config"
+	"p2pcp/internal/transfer/channel"
 	"strings"
 	"time"
 
@@ -143,19 +143,18 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 		slog.Info("Authenticated.")
 	}
 
-	cfg := config.GetConfig()
-	channel := transfer.NewChannel(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
+	reader := channel.NewChannelReader(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 		return getStream(transfer.Protocol)
-	}, int(cfg.PayloadSize))
+	})
 	defer func() {
-		if err := channel.Close(); err != nil {
+		if err := reader.Close(); err != nil {
 			slog.Debug("Error closing channel.", "error", err)
 		}
 	}()
 
-	err = transfer.ReadZip(channel, basePath)
+	err = transfer.ReadZip(reader, basePath)
 	if err != nil {
-		return fmt.Errorf("error receiving tar: %w", err)
+		return fmt.Errorf("error receiving zip: %w", err)
 	}
 
 	slog.Info("Transfer complete.")

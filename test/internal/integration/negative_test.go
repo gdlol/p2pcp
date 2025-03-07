@@ -55,7 +55,7 @@ func TestPrivateNetwork_NonExistDir(t *testing.T) {
 
 	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
 	runTestNegative(ctx, composeFilePath, func() {
-		docker.AssertContainerLogContains(ctx, "receiver", "path: directory /data/test1 does not exist")
+		docker.AssertContainerLogContains(ctx, "receiver", "path: directory /data/test1/test2 does not exist")
 		docker.AssertContainerLogNotContains(ctx, "receiver", "Done.")
 		docker.AssertContainerLogNotContains(ctx, "sender", "Receiver ID:", "Sending...")
 	})

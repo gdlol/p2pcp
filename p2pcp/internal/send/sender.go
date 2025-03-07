@@ -8,7 +8,7 @@ import (
 	"p2pcp/internal/auth"
 	"p2pcp/internal/node"
 	"p2pcp/internal/transfer"
-	"p2pcp/pkg/config"
+	"p2pcp/internal/transfer/channel"
 	"sync"
 	"time"
 
@@ -104,17 +104,16 @@ func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) error 
 	host := n.GetHost()
 
 	streams := make(chan io.ReadWriteCloser, 1)
-	cfg := config.GetConfig()
-	channel := transfer.NewChannel(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
+	writer := channel.NewChannelWriter(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 		select {
 		case stream := <-streams:
 			return stream, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
-	}, int(cfg.PayloadSize))
+	})
 	defer func() {
-		if err := channel.Close(); err != nil {
+		if err := writer.Close(); err != nil {
 			slog.Debug("Error closing channel.", "error", err)
 		}
 	}()
@@ -134,7 +133,10 @@ func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) error 
 	})
 	defer host.RemoveStreamHandler(transfer.Protocol)
 
-	err := transfer.WriteZip(channel, path)
+	err := transfer.WriteZip(writer, path)
+	if err == nil {
+		err = writer.Flush(true)
+	}
 	if err != nil {
 		return fmt.Errorf("error sending path %s: %w", path, err)
 	}

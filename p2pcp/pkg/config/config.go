@@ -3,7 +3,6 @@ package config
 // spell-checker: ignore adrg
 
 import (
-	"p2pcp/internal/transfer"
 	"path/filepath"
 	"project/pkg/project"
 
@@ -13,13 +12,11 @@ import (
 
 type Config struct {
 	BootstrapPeers []string
-	PayloadSize    uint16
 }
 
 func NewConfig() Config {
 	return Config{
 		BootstrapPeers: nil,
-		PayloadSize:    transfer.DefaultPayloadSize,
 	}
 }
 
@@ -29,7 +26,6 @@ func init() {
 	viper.AddConfigPath(filepath.Join(xdg.ConfigHome, project.Name))
 	defaultConfig := NewConfig()
 	viper.SetDefault("BootstrapPeers", defaultConfig.BootstrapPeers)
-	viper.SetDefault("PayloadSize", defaultConfig.PayloadSize)
 }
 
 var config = NewConfig()

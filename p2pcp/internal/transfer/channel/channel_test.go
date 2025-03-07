@@ -1,4 +1,4 @@
-package transfer
+package channel
 
 import (
 	"context"
@@ -53,10 +53,15 @@ func newChannelPair(limit int) (io.ReadWriteCloser, io.ReadWriteCloser) {
 }
 
 func TestChannel(t *testing.T) {
-	dataLength := DefaultPayloadSize * 10
-	minLimit := DefaultPayloadSize + headerSize
-	limits := []int{minLimit - 1, minLimit, minLimit + 1}
-	for i := minLimit + 1000; i < DefaultPayloadSize*2; i += 1000 {
+	dataLength := payloadSize * 10
+	limits := make([]int, 0)
+	for i := payloadSize + 10; i < payloadSize+100; i += 10 {
+		limits = append(limits, i)
+	}
+	for i := payloadSize + 100; i < payloadSize+1000; i += 100 {
+		limits = append(limits, i)
+	}
+	for i := payloadSize + 1000; i < payloadSize+10000; i += 1000 {
 		limits = append(limits, i)
 	}
 
@@ -87,22 +92,22 @@ func TestChannel(t *testing.T) {
 				}
 			}()
 
-			channel1 := NewChannel(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
+			channel1 := NewChannelWriter(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 				select {
 				case <-ctx.Done():
 					return nil, ctx.Err()
 				case stream := <-streamSource1:
 					return stream, nil
 				}
-			}, DefaultPayloadSize)
-			channel2 := NewChannel(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
+			})
+			channel2 := NewChannelReader(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 				select {
 				case <-ctx.Done():
 					return nil, ctx.Err()
 				case stream := <-streamSource2:
 					return stream, nil
 				}
-			}, DefaultPayloadSize)
+			})
 
 			data := make([]byte, dataLength)
 			_, err := rand.Read(data)
@@ -127,7 +132,7 @@ func TestChannel(t *testing.T) {
 					if ctx.Err() != nil {
 						return
 					}
-					lengthB, err := rand.Int(rand.Reader, big.NewInt(int64(DefaultPayloadSize)*2))
+					lengthB, err := rand.Int(rand.Reader, big.NewInt(int64(payloadSize)*2))
 					if err != nil {
 						sendErr = err
 						return
@@ -151,12 +156,12 @@ func TestChannel(t *testing.T) {
 						receiveErr = err
 					}
 				}()
-				buffer := make([]byte, DefaultPayloadSize*2)
+				buffer := make([]byte, payloadSize*2)
 				for {
 					if ctx.Err() != nil {
 						return
 					}
-					length, err := rand.Int(rand.Reader, big.NewInt(int64(DefaultPayloadSize)*2))
+					length, err := rand.Int(rand.Reader, big.NewInt(int64(payloadSize)*2))
 					if err != nil {
 						receiveErr = err
 						return
@@ -174,15 +179,10 @@ func TestChannel(t *testing.T) {
 			}()
 
 			transferWg.Wait()
-			if limit < minLimit {
-				assert.Error(t, sendErr)
-				assert.Error(t, receiveErr)
-				assert.Equal(t, ctx.Err(), context.DeadlineExceeded)
-			} else {
-				assert.NoError(t, sendErr)
-				assert.NoError(t, receiveErr)
-				assert.ElementsMatch(t, data, received)
-			}
+			assert.NoError(t, sendErr)
+			assert.NoError(t, receiveErr)
+			require.NoError(t, ctx.Err())
+			assert.Equal(t, data, received)
 		})
 	}
 }
