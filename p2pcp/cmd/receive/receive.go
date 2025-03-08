@@ -31,8 +31,8 @@ var ReceiveCmd = &cobra.Command{
 		}
 
 		secret := args[1]
-		if len(secret) < 4 {
-			return fmt.Errorf("pin/token: must be at least 4 characters long")
+		if len(secret) < 6 {
+			return fmt.Errorf("pin/token: must be at least 6 characters long")
 		}
 
 		var path string

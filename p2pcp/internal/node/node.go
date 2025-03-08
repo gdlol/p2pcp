@@ -193,7 +193,7 @@ func (n *node) Close() {
 	n.host.Close()
 }
 
-// Gets a SHA-256 hashed ID, as peerID.String() may or may not have been hashed.
+// Gets a hashed ID, as peerID.String() may or may not have been hashed.
 func GetNodeID(peerID peer.ID) (NodeID, error) {
 	pubKey, err := peerID.ExtractPublicKey()
 	if err != nil {

@@ -87,8 +87,6 @@ func testReadWrite(t *testing.T, read readFunc, write writeFunc) {
 
 	for _, tt := range tests {
 		t.Run(tt.testDir, func(t *testing.T) {
-			t.Parallel()
-
 			testPath := filepath.Join(testDataPath, tt.testDir)
 			sendPath := filepath.Join(testPath, tt.sendPath)
 			expectedPath := filepath.Join(testPath, tt.expectedPath)

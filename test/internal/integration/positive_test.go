@@ -11,6 +11,8 @@ import (
 	"test/internal/docker"
 	"test/pkg/asserts"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func runTestPositive(ctx context.Context, composeFilePath string, assertions func()) {
@@ -69,6 +71,64 @@ func TestPrivateNetwork_SendDir(t *testing.T) {
 	})
 }
 
+func TestPrivateNetwork_SendDir_OverwriteDir(t *testing.T) {
+	t.Cleanup(cleanup)
+
+	restore := setEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/subdir --strict --private")
+	defer restore()
+
+	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/subdir")
+	receiverPath := filepath.Join(receiverDataPath, "subdir")
+	err := os.MkdirAll(receiverPath, 0755)
+	workspace.Check(err)
+
+	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
+	runTestPositive(t.Context(), composeFilePath, func() {
+		asserts.AssertDirsEqual(expectedPath, receiverPath)
+	})
+}
+
+func TestPrivateNetwork_SendDir_OverwriteDirWithFile(t *testing.T) {
+	t.Cleanup(cleanup)
+
+	restore := setEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/subdir --strict --private")
+	defer restore()
+
+	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/subdir")
+	receiverPath := filepath.Join(receiverDataPath, "subdir")
+	err := os.MkdirAll(receiverPath, 0755)
+	workspace.Check(err)
+	generateFile(filepath.Join(receiverPath, "extra_file"), 1024)
+
+	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
+	runTestPositive(t.Context(), composeFilePath, func() {
+		assert.False(t, asserts.AreDirsEqual(expectedPath, receiverPath))
+	})
+}
+
+func TestPrivateNetwork_SendDir_OverwriteLink(t *testing.T) {
+	t.Cleanup(cleanup)
+
+	expectedPath := filepath.Join(senderDataPath, "dir")
+	receiverPath := filepath.Join(receiverDataPath, "data/dir")
+	err := os.MkdirAll(expectedPath, 0755)
+	workspace.Check(err)
+	generateFile(filepath.Join(expectedPath, "file"), 1024)
+	generateFile(filepath.Join(receiverPath, "file"), 1024)
+	err = os.Symlink("./file", filepath.Join(expectedPath, "link"))
+	workspace.Check(err)
+	err = os.Symlink("..", filepath.Join(receiverPath, "link"))
+	workspace.Check(err)
+
+	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
+	runTestPositive(t.Context(), composeFilePath, func() {
+		asserts.AssertFilesEqual(filepath.Join(expectedPath, "file"), filepath.Join(receiverPath, "file"))
+		destination, err := os.Readlink(filepath.Join(receiverPath, "link"))
+		workspace.Check(err)
+		assert.Equal(t, "file", destination)
+	})
+}
+
 func TestPrivateNetwork_SendFile(t *testing.T) {
 	t.Cleanup(cleanup)
 
@@ -77,6 +137,22 @@ func TestPrivateNetwork_SendFile(t *testing.T) {
 
 	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/file")
 	receiverPath := filepath.Join(receiverDataPath, "file")
+
+	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
+	runTestPositive(t.Context(), composeFilePath, func() {
+		asserts.AssertFilesEqual(expectedPath, receiverPath)
+	})
+}
+
+func TestPrivateNetwork_SendFile_Overwrite(t *testing.T) {
+	t.Cleanup(cleanup)
+
+	restore := setEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/file --strict --private")
+	defer restore()
+
+	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/file")
+	receiverPath := filepath.Join(receiverDataPath, "file")
+	generateFile(receiverPath, 1024)
 
 	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
 	runTestPositive(t.Context(), composeFilePath, func() {

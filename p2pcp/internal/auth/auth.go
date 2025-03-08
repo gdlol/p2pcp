@@ -17,14 +17,16 @@ const Protocol protocol.ID = "/p2pcp/auth/0.1.0"
 
 const authenticationTimeout = 10 * time.Second
 
+const pinLength = 6
+
 func ComputeHash(input []byte) []byte {
 	hash := blake2b.Sum256(input)
 	return hash[:]
 }
 
-// 4-digit PIN
+// 6-digit PIN
 func GetOneTimeSecret() string {
-	digits := make([]string, 4)
+	digits := make([]string, pinLength)
 	for i := range digits {
 		n, err := rand.Int(rand.Reader, big.NewInt(10))
 		if err != nil {

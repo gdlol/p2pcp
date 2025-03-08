@@ -111,13 +111,19 @@ func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) (err e
 		slog.Error("Receiver error", "error", errStr)
 		cancel()
 	})
+	canceling := false
 	interrupt.RegisterInterruptHandler(ctx, func() {
+		canceling = true
 		n.SendError(ctx, receiver, "Transfer canceled.")
 		cancel()
 	})
 
 	streams := make(chan io.ReadWriteCloser, 1)
 	writer := channel.NewChannelWriter(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
+		if canceling {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		}
 		select {
 		case stream := <-streams:
 			return stream, nil

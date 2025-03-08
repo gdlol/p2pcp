@@ -147,13 +147,20 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 		slog.Error("Sender error", "error", errStr)
 		cancel()
 	})
+	canceling := false
 	interrupt.RegisterInterruptHandler(ctx, func() {
+		canceling = true
 		n.SendError(ctx, sender, "Transfer canceled.")
 		cancel()
 	})
 
 	reader := channel.NewChannelReader(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
-		return getStream(transfer.Protocol)
+		if canceling {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		} else {
+			return getStream(transfer.Protocol)
+		}
 	})
 	defer func() {
 		if err := reader.Close(); err != nil {

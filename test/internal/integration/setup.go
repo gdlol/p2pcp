@@ -52,15 +52,17 @@ func generateFile(path string, size int64) {
 	}
 }
 
+func cleanupCompose(ctx context.Context, composeFilePath string, testName string) {
+	defer docker.ComposeDown(ctx, composeFilePath)
+	defer docker.DumpComposeLogs(ctx, composeFilePath, testName)
+	defer docker.ComposeCollectCoverage(ctx)
+	defer docker.ComposeStop(ctx, composeFilePath)
+}
+
 func runCompose(ctx context.Context, composeFilePath string, testName string) (cleanup func()) {
-	docker.ComposeDown(ctx, composeFilePath)
 	docker.ComposeUp(ctx, composeFilePath)
 	return func() {
-		defer docker.ComposeDown(ctx, composeFilePath)
-		defer docker.ComposeStop(ctx, composeFilePath)
-		defer docker.DumpComposeLogs(ctx, composeFilePath, testName)
-		defer docker.ComposeCollectCoverage(ctx)
-		defer docker.ComposeStop(ctx, composeFilePath)
+		cleanupCompose(ctx, composeFilePath, testName)
 	}
 }
 

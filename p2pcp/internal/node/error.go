@@ -36,6 +36,7 @@ func registerErrorHandler(host host.Host, peerID peer.ID, handler func(string)) 
 		defer stream.Close()
 		if stream.Conn().RemotePeer() == peerID {
 			errStr, err := readString(stream)
+			stream.Write([]byte{1})
 			if err != nil {
 				handler(fmt.Sprintf("Failed to read error message: %v", err))
 			} else {
@@ -66,8 +67,8 @@ func sendError(ctx context.Context, host host.Host, peerID peer.ID, errStr strin
 			defer stream.Close()
 			err := writeString(stream, errStr)
 			if err == nil {
-				_, err = stream.Read(make([]byte, 1))
-				if err == io.EOF {
+				n, _ := stream.Read(make([]byte, 1))
+				if n == 1 {
 					return nil
 				}
 			}

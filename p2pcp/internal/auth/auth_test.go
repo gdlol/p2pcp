@@ -26,7 +26,7 @@ func TestGetOneTimeSecret(t *testing.T) {
 	chars := make(map[string]bool)
 	for range 1000 {
 		secret := GetOneTimeSecret()
-		require.Len(t, secret, 4)
+		require.Len(t, secret, 6)
 		secrets[secret] = true
 		for _, char := range secret {
 			chars[string(char)] = true
@@ -55,22 +55,28 @@ func TestGetStrongSecret(t *testing.T) {
 }
 
 type testStream struct {
-	closed bool
+	readClosed  bool
+	writeClosed bool
 }
 
 func (s *testStream) Read(p []byte) (n int, err error) {
-	for !s.closed {
+	for !s.readClosed {
 		time.Sleep(100 * time.Millisecond)
 	}
 	return 0, io.EOF
 }
 
 func (s *testStream) Write(p []byte) (n int, err error) {
-	return 0, io.ErrClosedPipe
+	if s.writeClosed {
+		return 0, io.ErrClosedPipe
+	} else {
+		return len(p), nil
+	}
 }
 
 func (s *testStream) Close() error {
-	s.closed = true
+	s.readClosed = true
+	s.writeClosed = true
 	return nil
 }
 
@@ -82,7 +88,8 @@ func TestHandleAuthenticate_Timeout(t *testing.T) {
 	success, err := HandleAuthenticate(stream, secretHash)
 	assert.Nil(t, success)
 	assert.Error(t, err)
-	assert.True(t, stream.closed)
+	assert.True(t, stream.readClosed)
+	assert.True(t, stream.writeClosed)
 	assert.False(t, timer.Stop())
 }
 
@@ -97,14 +104,30 @@ func TestHandleAuthenticate_ReadError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, io.EOF, err)
 	assert.True(t, timer.Stop())
+	assert.True(t, stream.readClosed)
+	assert.True(t, stream.writeClosed)
 }
 
-func TestAuthenticate(t *testing.T) {
+func TestAuthenticate_ErrorWrite(t *testing.T) {
 	stream := &testStream{}
+	stream.writeClosed = true
 	secretHash := ComputeHash([]byte("test"))
 	success, err := Authenticate(stream, secretHash)
 	assert.False(t, success)
 	assert.Error(t, err)
 	assert.Equal(t, io.ErrClosedPipe, err)
-	assert.True(t, stream.closed)
+	assert.True(t, stream.readClosed)
+	assert.True(t, stream.writeClosed)
+}
+
+func TestAuthenticate_ErrorRead(t *testing.T) {
+	stream := &testStream{}
+	stream.readClosed = true
+	secretHash := ComputeHash([]byte("test"))
+	success, err := Authenticate(stream, secretHash)
+	assert.False(t, success)
+	assert.Error(t, err)
+	assert.Equal(t, io.EOF, err)
+	assert.True(t, stream.readClosed)
+	assert.True(t, stream.writeClosed)
 }
