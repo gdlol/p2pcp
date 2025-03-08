@@ -17,7 +17,7 @@ func ComposeUp(ctx context.Context, composeFilePath string) {
 }
 
 func ComposeStop(ctx context.Context, composeFilePath string) {
-	workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "stop")
+	workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "stop", "--timeout", "0")
 }
 
 func ComposeDown(ctx context.Context, composeFilePath string) {

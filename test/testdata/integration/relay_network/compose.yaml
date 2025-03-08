@@ -4,8 +4,12 @@ services:
     image: local/test
     command: server
     networks:
-      test:
+      public:
         ipv4_address: 1.0.0.127
+      private1:
+        ipv4_address: 10.0.0.127
+      private2:
+        ipv4_address: 10.1.0.127
     volumes:
       - config:/config
     healthcheck:
@@ -22,8 +26,8 @@ services:
       server:
         condition: service_healthy
     networks:
-      test:
-        ipv4_address: 1.0.0.1
+      private1:
+        ipv4_address: 10.0.0.1
     volumes:
       - coverage:/coverage
       - config:/root/.config/p2pcp
@@ -40,8 +44,8 @@ services:
       sender:
         condition: service_started
     networks:
-      test:
-        ipv4_address: 1.0.0.2
+      private2:
+        ipv4_address: 10.1.0.1
     volumes:
       - coverage:/coverage
       - config:/root/.config/p2pcp
@@ -54,13 +58,27 @@ services:
       RECEIVER_TARGET_PATH: ${RECEIVER_TARGET_PATH:-}
       RECEIVER_SECRET: ${RECEIVER_SECRET:-}
 networks:
-  test:
+  public:
     internal: true
     ipam:
       config:
         - subnet: "1.0.0.0/16"
           ip_range: "1.0.0.0/24"
           gateway: "1.0.0.254"
+  private1:
+    internal: true
+    ipam:
+      config:
+        - subnet: "10.0.0.0/16"
+          ip_range: "10.0.0.0/24"
+          gateway: "10.0.0.254"
+  private2:
+    internal: true
+    ipam:
+      config:
+        - subnet: "10.1.0.0/16"
+          ip_range: "10.1.0.0/24"
+          gateway: "10.1.0.254"
 volumes:
   config:
   coverage:

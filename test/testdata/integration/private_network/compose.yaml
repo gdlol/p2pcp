@@ -5,6 +5,7 @@ services:
     command: sender ${SENDER_ARGS:-send --debug --strict --private}
     volumes:
       - coverage:/coverage
+      - /tmp/p2pcp/integration/sender/data:/data
       - ../../transfer_file_with_subdir:/testdata/transfer_file_with_subdir
     environment:
       GOCOVERDIR: /coverage

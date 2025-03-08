@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -135,7 +136,7 @@ func readTar(r io.Reader, basePath string) error {
 		}
 		err = os.Symlink(linkName, linkPath)
 		if err != nil {
-			return fmt.Errorf("error creating symbolic link %s -> %s: %w", linkPath, linkName, err)
+			slog.Warn(fmt.Sprintf("error creating symbolic link %s -> %s: %v", linkPath, linkName, err))
 		}
 	}
 

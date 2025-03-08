@@ -76,11 +76,18 @@ func (c *channelWriter) Flush(end bool) error {
 		if len(data) == 0 {
 			return nil
 		}
-		err = writeData(stream, data)
-		if err != nil {
-			c.logger.Debug("Error flushing data.", "error", err)
-			c.closeStream()
-			continue
+		for len(data) > 0 {
+			buffer := data
+			if len(buffer) > payloadSize {
+				buffer = buffer[:payloadSize]
+			}
+			err = writeData(stream, buffer)
+			if err != nil {
+				c.logger.Debug("Error flushing data.", "error", err)
+				c.closeStream()
+				continue
+			}
+			data = data[len(buffer):]
 		}
 		if end {
 			continue // ensure buffer empty

@@ -2,12 +2,14 @@ package integration
 
 import (
 	"context"
+	"crypto/rand"
 	"os"
 	"path/filepath"
 	"project/pkg/workspace"
 	"test/internal/docker"
 )
 
+const senderDataPath = "/tmp/p2pcp/integration/sender/data"
 const receiverDataPath = "/tmp/p2pcp/integration/receiver/data"
 
 func getTestDataPath() string {
@@ -30,13 +32,43 @@ func setEnv(key, value string) (restore func()) {
 	}
 }
 
+func generateFile(path string, size int64) {
+	err := os.MkdirAll(filepath.Dir(path), 0755)
+	workspace.Check(err)
+	file, err := os.Create(path)
+	workspace.Check(err)
+	defer file.Close()
+
+	buf := make([]byte, 1024)
+	for size > 0 {
+		n, err := rand.Read(buf)
+		workspace.Check(err)
+		if size < int64(n) {
+			n = int(size)
+		}
+		_, err = file.Write(buf[:n])
+		workspace.Check(err)
+		size -= int64(n)
+	}
+}
+
 func runCompose(ctx context.Context, composeFilePath string, testName string) (cleanup func()) {
 	docker.ComposeDown(ctx, composeFilePath)
 	docker.ComposeUp(ctx, composeFilePath)
 	return func() {
 		defer docker.ComposeDown(ctx, composeFilePath)
+		defer docker.ComposeStop(ctx, composeFilePath)
 		defer docker.DumpComposeLogs(ctx, composeFilePath, testName)
 		defer docker.ComposeCollectCoverage(ctx)
 		defer docker.ComposeStop(ctx, composeFilePath)
 	}
+}
+
+func cleanup() {
+	ctx := context.Background()
+	docker.ComposeDown(ctx, filepath.Join(getTestDataPath(), "public_network/compose.yaml"))
+	docker.ComposeDown(ctx, filepath.Join(getTestDataPath(), "private_network/compose.yaml"))
+	docker.ComposeDown(ctx, filepath.Join(getTestDataPath(), "relay_network/compose.yaml"))
+	workspace.ResetDir(senderDataPath)
+	sudoResetDir(receiverDataPath)
 }

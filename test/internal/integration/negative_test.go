@@ -11,6 +11,9 @@ import (
 	"testing"
 )
 
+const receiverConfirmMessage = "Please verify that the following random art " +
+	"matches the one displayed on the sender's side."
+
 func runTestNegative(ctx context.Context, composeFilePath string, assertions func()) {
 	pc, _, _, ok := runtime.Caller(1)
 	if !ok {
@@ -33,6 +36,8 @@ func runTestNegative(ctx context.Context, composeFilePath string, assertions fun
 }
 
 func TestPrivateNetwork_DefaultDenyConfirm(t *testing.T) {
+	t.Cleanup(cleanup)
+
 	ctx := t.Context()
 
 	restoreSenderArgs := setEnv("SENDER_ARGS", "send --private")
@@ -42,12 +47,15 @@ func TestPrivateNetwork_DefaultDenyConfirm(t *testing.T) {
 
 	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
 	runTestNegative(ctx, composeFilePath, func() {
+		docker.AssertContainerLogContains(ctx, "receiver", receiverConfirmMessage)
 		docker.AssertContainerLogNotContains(ctx, "receiver", "Done.")
 		docker.AssertContainerLogNotContains(ctx, "sender", "Receiver ID:", "Sending...")
 	})
 }
 
 func TestPrivateNetwork_NonExistDir(t *testing.T) {
+	t.Cleanup(cleanup)
+
 	ctx := t.Context()
 
 	restoreReceiverTargetPath := setEnv("RECEIVER_TARGET_PATH", "/data/test1/test2")
@@ -56,12 +64,14 @@ func TestPrivateNetwork_NonExistDir(t *testing.T) {
 	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
 	runTestNegative(ctx, composeFilePath, func() {
 		docker.AssertContainerLogContains(ctx, "receiver", "path: directory /data/test1/test2 does not exist")
-		docker.AssertContainerLogNotContains(ctx, "receiver", "Done.")
+		docker.AssertContainerLogNotContains(ctx, "receiver", "Done.", receiverConfirmMessage)
 		docker.AssertContainerLogNotContains(ctx, "sender", "Receiver ID:", "Sending...")
 	})
 }
 
 func TestPrivateNetwork_WrongSecret(t *testing.T) {
+	t.Cleanup(cleanup)
+
 	ctx := t.Context()
 
 	restoreSenderArgs := setEnv("SENDER_ARGS", "send --private")
@@ -82,6 +92,8 @@ func TestPrivateNetwork_WrongSecret(t *testing.T) {
 }
 
 func TestPrivateNetwork_WrongSecret_Strict(t *testing.T) {
+	t.Cleanup(cleanup)
+
 	ctx := t.Context()
 
 	restoreSenderArgs := setEnv("SENDER_ARGS", "send --private --strict")

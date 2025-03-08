@@ -16,6 +16,8 @@ func AssertFilesEqual(file1, file2 string) {
 	info2, err := os.Stat(file2)
 	checkEqual(nil, err)
 
+	checkEqual(false, info1.IsDir())
+	checkEqual(false, info2.IsDir())
 	checkEqual(info1.Name(), info2.Name())
 	checkEqual(info1.Size(), info2.Size())
 	checkEqual(info1.Mode(), info2.Mode())
@@ -55,6 +57,15 @@ func AssertFilesEqual(file1, file2 string) {
 }
 
 func AssertDirsEqual(dir1, dir2 string) {
+	info1, err := os.Stat(dir1)
+	checkEqual(nil, err)
+
+	info2, err := os.Stat(dir1)
+	checkEqual(nil, err)
+
+	checkEqual(true, info1.IsDir())
+	checkEqual(true, info2.IsDir())
+
 	type walkData struct {
 		path string
 		info os.FileInfo
@@ -64,7 +75,7 @@ func AssertDirsEqual(dir1, dir2 string) {
 	var walkData1 []walkData
 	var walkData2 []walkData
 
-	err := filepath.Walk(dir1, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(dir1, func(path string, info os.FileInfo, err error) error {
 		walkData1 = append(walkData1, walkData{path, info, err})
 		return err
 	})
