@@ -38,8 +38,11 @@ var SendCmd = &cobra.Command{
 				return fmt.Errorf("error getting absolute path: %w", err)
 			}
 		}
-		strict, _ := cmd.Flags().GetBool("strict")
+		if _, err := os.Lstat(path); os.IsNotExist(err) {
+			return fmt.Errorf("path: path %s does not exist", path)
+		}
 
+		strict, _ := cmd.Flags().GetBool("strict")
 		private, _ := cmd.Flags().GetBool("private")
 
 		slog.Debug(fmt.Sprintf("Sending %s...", path), "strict", strict, "private", private)

@@ -10,10 +10,10 @@ import (
 )
 
 func AssertFilesEqual(file1, file2 string) {
-	info1, err := os.Stat(file1)
+	info1, err := os.Lstat(file1)
 	checkEqual(nil, err)
 
-	info2, err := os.Stat(file2)
+	info2, err := os.Lstat(file2)
 	checkEqual(nil, err)
 
 	checkEqual(false, info1.IsDir())
@@ -57,10 +57,10 @@ func AssertFilesEqual(file1, file2 string) {
 }
 
 func AssertDirsEqual(dir1, dir2 string) {
-	info1, err := os.Stat(dir1)
+	info1, err := os.Lstat(dir1)
 	checkEqual(nil, err)
 
-	info2, err := os.Stat(dir1)
+	info2, err := os.Lstat(dir1)
 	checkEqual(nil, err)
 
 	checkEqual(true, info1.IsDir())

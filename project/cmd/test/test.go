@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"project/pkg/project"
 	"project/pkg/workspace"
@@ -12,6 +13,7 @@ import (
 func setup() {
 	projectPath := workspace.GetProjectPath()
 	workspace.ResetDir(filepath.Join(projectPath, "bin", "integration"))
+	os.Setenv("CGO_ENABLED", "0")
 
 	// Build binary with coverage
 	workspace.Run("go", "build",

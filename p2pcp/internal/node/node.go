@@ -40,6 +40,8 @@ type Node interface {
 	WaitForWAN(ctx context.Context) error
 	AdvertiseWAN(ctx context.Context, topic string) error
 	FindPeers(ctx context.Context, topic string) (<-chan peer.AddrInfo, error)
+	RegisterErrorHandler(peerID peer.ID, handler func(string))
+	SendError(ctx context.Context, peerID peer.ID, errStr string) error
 	Close()
 }
 
@@ -172,6 +174,14 @@ func findPeersForAutoRelay(ctx context.Context, n node) {
 			}
 		}
 	}
+}
+
+func (n *node) RegisterErrorHandler(peerID peer.ID, handler func(string)) {
+	registerErrorHandler(n.host, peerID, handler)
+}
+
+func (n *node) SendError(ctx context.Context, peerID peer.ID, errStr string) error {
+	return sendError(ctx, n.host, peerID, errStr)
 }
 
 func (n *node) Close() {

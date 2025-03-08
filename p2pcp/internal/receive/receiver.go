@@ -84,10 +84,7 @@ func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
 	return sender, nil
 }
 
-func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byte, basePath string) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
+func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byte, basePath string) (err error) {
 	n := r.node
 	host := n.GetHost()
 
@@ -143,6 +140,13 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 		slog.Info("Authenticated.")
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	n.RegisterErrorHandler(sender, func(errStr string) {
+		slog.Error("Sender error", "error", errStr)
+		cancel()
+	})
+
 	reader := channel.NewChannelReader(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 		return getStream(transfer.Protocol)
 	})
@@ -154,6 +158,12 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 
 	err = transfer.ReadZip(reader, basePath)
 	if err != nil {
+		if ctx.Err() == nil {
+			if err := n.SendError(ctx, sender, ""); err != nil {
+				slog.Debug("Error sending error message.", "error", err)
+			}
+			cancel()
+		}
 		return fmt.Errorf("error receiving zip: %w", err)
 	}
 

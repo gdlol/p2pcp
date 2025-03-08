@@ -69,6 +69,7 @@ func (s *sender) WaitForReceiver(ctx context.Context, secretHash []byte, path st
 				if err == nil {
 					select {
 					case authenticate <- remotePeer:
+						host.ConnManager().Protect(remotePeer, "receiver")
 					default:
 					}
 				}
@@ -99,9 +100,16 @@ func (s *sender) WaitForReceiver(ctx context.Context, secretHash []byte, path st
 	}
 }
 
-func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) error {
+func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) (err error) {
 	n := s.node
 	host := n.GetHost()
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	n.RegisterErrorHandler(receiver, func(errStr string) {
+		slog.Error("Receiver error", "error", errStr)
+		cancel()
+	})
 
 	streams := make(chan io.ReadWriteCloser, 1)
 	writer := channel.NewChannelWriter(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
@@ -133,11 +141,17 @@ func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) error 
 	})
 	defer host.RemoveStreamHandler(transfer.Protocol)
 
-	err := transfer.WriteZip(writer, path)
+	err = transfer.WriteZip(writer, path)
 	if err == nil {
 		err = writer.Flush(true)
 	}
 	if err != nil {
+		if ctx.Err() == nil {
+			if err := n.SendError(ctx, receiver, ""); err != nil {
+				slog.Debug("Error sending error message.", "error", err)
+			}
+			cancel()
+		}
 		return fmt.Errorf("error sending path %s: %w", path, err)
 	}
 

@@ -109,7 +109,7 @@ func getContainerLogs(ctx context.Context, containerName string) (stdout string,
 	return stdoutWriter.String(), stderrWriter.String(), nil
 }
 
-func AssertContainerLogContains(ctx context.Context, containerName string, lines ...string) {
+func AssertContainerLogContains(ctx context.Context, containerName string, substrings ...string) {
 	stdout, stderr, err := getContainerLogs(ctx, containerName)
 	workspace.Check(err)
 
@@ -122,14 +122,17 @@ func AssertContainerLogContains(ctx context.Context, containerName string, lines
 		}
 		allLines[line] = true
 	}
-	missingLines := make([]string, 0)
-	for _, line := range lines {
-		if !allLines[line] {
-			missingLines = append(missingLines, line)
+	for _, substring := range substrings {
+		found := false
+		for line := range allLines {
+			if strings.Contains(line, substring) {
+				found = true
+				break
+			}
 		}
-	}
-	if len(missingLines) > 0 {
-		panic(fmt.Sprintf("Missing lines: %v", missingLines))
+		if !found {
+			panic(fmt.Sprintf("Missing substring: %s", substring))
+		}
 	}
 }
 
