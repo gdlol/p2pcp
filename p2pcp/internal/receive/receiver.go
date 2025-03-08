@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand"
 	"p2pcp/internal/auth"
+	"p2pcp/internal/interrupt"
 	"p2pcp/internal/node"
 	"p2pcp/internal/transfer"
 	"p2pcp/internal/transfer/channel"
@@ -146,6 +147,10 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 		slog.Error("Sender error", "error", errStr)
 		cancel()
 	})
+	interrupt.RegisterInterruptHandler(ctx, func() {
+		n.SendError(ctx, sender, "Transfer canceled.")
+		cancel()
+	})
 
 	reader := channel.NewChannelReader(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 		return getStream(transfer.Protocol)
@@ -159,9 +164,7 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 	err = transfer.ReadZip(reader, basePath)
 	if err != nil {
 		if ctx.Err() == nil {
-			if err := n.SendError(ctx, sender, ""); err != nil {
-				slog.Debug("Error sending error message.", "error", err)
-			}
+			n.SendError(context.Background(), sender, "")
 			cancel()
 		}
 		return fmt.Errorf("error receiving zip: %w", err)

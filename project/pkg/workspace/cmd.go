@@ -11,6 +11,7 @@ import (
 func Run(cmd string, args ...string) {
 	log.Println(cmd, strings.Join(args, " "))
 	c := exec.Command(cmd, args...)
+	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	err := c.Run()
@@ -20,6 +21,7 @@ func Run(cmd string, args ...string) {
 func RunCtx(ctx context.Context, cmd string, args ...string) {
 	log.Println(cmd, strings.Join(args, " "))
 	c := exec.CommandContext(ctx, cmd, args...)
+	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	err := c.Run()

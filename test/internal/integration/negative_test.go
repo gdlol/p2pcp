@@ -10,6 +10,7 @@ import (
 	"strings"
 	"test/internal/docker"
 	"testing"
+	"time"
 )
 
 const receiverConfirmMessage = "Please verify that the following random art " +
@@ -171,7 +172,7 @@ func TestPrivateNetwork_SenderError(t *testing.T) {
 	runTestNegative(ctx, composeFilePath, func() {
 		docker.WaitContainer(ctx, "receiver")
 		docker.WaitContainer(ctx, "sender")
-		docker.AssertContainerLogContains(ctx, "receiver", "Sender error")
+		docker.AssertContainerLogContains(ctx, "receiver", "Sender error error=\"\"")
 		docker.AssertContainerLogNotContains(ctx, "receiver", "Done.")
 		docker.AssertContainerLogContains(ctx, "sender", "Sending...", "unsupported file type: /data/file")
 		docker.AssertContainerLogNotContains(ctx, "sender", "Done.")
@@ -199,7 +200,67 @@ func TestPrivateNetwork_ReceiverError(t *testing.T) {
 		docker.WaitContainer(ctx, "sender")
 		docker.AssertContainerLogContains(ctx, "receiver", "/data/test1/test2/file: is a directory")
 		docker.AssertContainerLogNotContains(ctx, "receiver", "Done.")
-		docker.AssertContainerLogContains(ctx, "sender", "Sending...", "Receiver error")
+		docker.AssertContainerLogContains(ctx, "sender", "Sending...", "Receiver error error=\"\"")
+		docker.AssertContainerLogNotContains(ctx, "sender", "Done.")
+	})
+}
+
+func TestPrivateNetwork_SenderCancel(t *testing.T) {
+	t.Cleanup(cleanup)
+
+	ctx := t.Context()
+
+	restoreSenderArgs := setEnv("SENDER_ARGS", "send large_file --strict")
+	defer restoreSenderArgs()
+
+	senderPath := filepath.Join(senderDataPath, "large_file")
+	generateFile(senderPath, 1024*1024*100)
+
+	composeFilePath := filepath.Join(getTestDataPath(), "relay_network/compose.yaml")
+	runTestNegative(ctx, composeFilePath, func() {
+		_, err := docker.WaitForContainerLog(ctx, "receiver", time.Minute, "large_file")
+		workspace.Check(err)
+		func() {
+			defer func() {
+				recover()
+			}()
+			workspace.RunCtx(ctx, "docker", "kill", "sender", "--signal", "SIGINT")
+		}()
+		docker.WaitContainer(ctx, "sender")
+		docker.WaitContainer(ctx, "receiver")
+		docker.AssertContainerLogContains(ctx, "sender", "Canceling...")
+		docker.AssertContainerLogContains(ctx, "receiver", "Sender error error=\"Transfer canceled.\"")
+		docker.AssertContainerLogNotContains(ctx, "receiver", "Done.")
+		docker.AssertContainerLogNotContains(ctx, "sender", "Done.")
+	})
+}
+
+func TestPrivateNetwork_ReceiverCancel(t *testing.T) {
+	t.Cleanup(cleanup)
+
+	ctx := t.Context()
+
+	restoreSenderArgs := setEnv("SENDER_ARGS", "send large_file --strict")
+	defer restoreSenderArgs()
+
+	senderPath := filepath.Join(senderDataPath, "large_file")
+	generateFile(senderPath, 1024*1024*100)
+
+	composeFilePath := filepath.Join(getTestDataPath(), "relay_network/compose.yaml")
+	runTestNegative(ctx, composeFilePath, func() {
+		_, err := docker.WaitForContainerLog(ctx, "receiver", time.Minute, "large_file")
+		workspace.Check(err)
+		func() {
+			defer func() {
+				recover()
+			}()
+			workspace.RunCtx(ctx, "docker", "kill", "receiver", "--signal", "SIGINT")
+		}()
+		docker.WaitContainer(ctx, "receiver")
+		docker.WaitContainer(ctx, "sender")
+		docker.AssertContainerLogContains(ctx, "sender", "Receiver error error=\"Transfer canceled.\"")
+		docker.AssertContainerLogContains(ctx, "receiver", "Canceling...")
+		docker.AssertContainerLogNotContains(ctx, "receiver", "Done.")
 		docker.AssertContainerLogNotContains(ctx, "sender", "Done.")
 	})
 }

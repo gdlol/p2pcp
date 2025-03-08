@@ -62,8 +62,20 @@ func sendError(ctx context.Context, host host.Host, peerID peer.ID, errStr strin
 			time.Sleep(b.Delay())
 			continue
 		}
-		defer stream.Close()
-		return writeString(stream, errStr)
+		err = func() error {
+			defer stream.Close()
+			err := writeString(stream, errStr)
+			if err == nil {
+				_, err = stream.Read(make([]byte, 1))
+				if err == io.EOF {
+					return nil
+				}
+			}
+			return err
+		}()
+		if err == nil {
+			return nil
+		}
 	}
 	return ctx.Err()
 }

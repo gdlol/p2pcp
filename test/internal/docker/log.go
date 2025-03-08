@@ -14,7 +14,7 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
-func WaitForContainerLog(ctx context.Context, containerName string, timeout time.Duration, prefix string) (string, error) {
+func WaitForContainerLog(ctx context.Context, containerName string, timeout time.Duration, substring string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -25,7 +25,7 @@ func WaitForContainerLog(ctx context.Context, containerName string, timeout time
 
 	reader, err := cli.ContainerLogs(ctx, containerName, container.LogsOptions{
 		ShowStdout: true,
-		ShowStderr: false,
+		ShowStderr: true,
 		Follow:     true,
 	})
 	if err != nil {
@@ -33,15 +33,16 @@ func WaitForContainerLog(ctx context.Context, containerName string, timeout time
 	}
 	defer reader.Close()
 
-	pipeReader, pipeWriter := io.Pipe()
+	stdoutReader, stdoutWriter := io.Pipe()
+	stderrReader, stderrWriter := io.Pipe()
 	copyErr := make(chan error, 1)
 	scanErr := make(chan error, 1)
 	result := make(chan string, 1)
 
 	// De-multiplex stdout/stderr logs
 	go func() {
-		defer pipeReader.Close()
-		_, err = stdcopy.StdCopy(pipeWriter, io.Discard, reader)
+		defer stdoutReader.Close()
+		_, err = stdcopy.StdCopy(stdoutWriter, stderrWriter, reader)
 		if err != nil {
 			select {
 			case copyErr <- err:
@@ -50,26 +51,28 @@ func WaitForContainerLog(ctx context.Context, containerName string, timeout time
 		}
 	}()
 
-	// Scan for a line starting with prefix
-	go func() {
-		scanner := bufio.NewScanner(pipeReader)
-		for scanner.Scan() {
-			line := scanner.Text()
-			if strings.HasPrefix(line, prefix) {
+	// Scan for a line starting containing the substring
+	for _, reader := range []io.Reader{stdoutReader, stderrReader} {
+		go func() {
+			scanner := bufio.NewScanner(reader)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if strings.Contains(line, substring) {
+					select {
+					case result <- line:
+					case <-ctx.Done():
+					}
+					return
+				}
+			}
+			if err := scanner.Err(); err != nil {
 				select {
-				case result <- line:
+				case scanErr <- err:
 				case <-ctx.Done():
 				}
-				return
 			}
-		}
-		if err := scanner.Err(); err != nil {
-			select {
-			case scanErr <- err:
-			case <-ctx.Done():
-			}
-		}
-	}()
+		}()
+	}
 
 	select {
 	case <-ctx.Done():

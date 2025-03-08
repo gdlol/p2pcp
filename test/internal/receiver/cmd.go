@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"os/signal"
 	"project/pkg/workspace"
 	"strings"
 	"test/internal/docker"
@@ -33,8 +34,6 @@ func Run(ctx context.Context, receiverDir string, stdin string, targetPath strin
 	}
 
 	fmt.Println(cmd[0], strings.Join(args, " "))
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	c := exec.CommandContext(ctx, "/p2pcp", args...)
 	if len(receiverDir) > 0 {
 		c.Dir = receiverDir
@@ -48,6 +47,17 @@ func Run(ctx context.Context, receiverDir string, stdin string, targetPath strin
 	err = c.Start()
 	workspace.Check(err)
 
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt)
+	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		case <-sigChan:
+			c.Process.Signal(os.Interrupt)
+		}
+	}()
+
 	// Confirmation of sender ID.
 	go func() {
 		if len(stdin) > 0 {
@@ -57,6 +67,5 @@ func Run(ctx context.Context, receiverDir string, stdin string, targetPath strin
 		workspace.Check(stdinPipe.Close())
 	}()
 
-	time.AfterFunc(30*time.Second, cancel)
 	return c.Wait()
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"p2pcp/internal/auth"
+	"p2pcp/internal/interrupt"
 	"p2pcp/internal/node"
 	"p2pcp/internal/transfer"
 	"p2pcp/internal/transfer/channel"
@@ -110,6 +111,10 @@ func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) (err e
 		slog.Error("Receiver error", "error", errStr)
 		cancel()
 	})
+	interrupt.RegisterInterruptHandler(ctx, func() {
+		n.SendError(ctx, receiver, "Transfer canceled.")
+		cancel()
+	})
 
 	streams := make(chan io.ReadWriteCloser, 1)
 	writer := channel.NewChannelWriter(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
@@ -147,9 +152,7 @@ func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) (err e
 	}
 	if err != nil {
 		if ctx.Err() == nil {
-			if err := n.SendError(ctx, receiver, ""); err != nil {
-				slog.Debug("Error sending error message.", "error", err)
-			}
+			n.SendError(context.Background(), receiver, "")
 			cancel()
 		}
 		return fmt.Errorf("error sending path %s: %w", path, err)
