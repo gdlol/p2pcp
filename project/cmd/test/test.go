@@ -46,10 +46,8 @@ var TestCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		clean, err := cmd.Flags().GetBool("clean")
 		workspace.Check(err)
-		cover, err := cmd.Flags().GetBool("cover")
-		workspace.Check(err)
 
-		if clean || cover {
+		if clean {
 			// spell-checker: ignore testcache
 			workspace.Run("go", "clean", "-testcache")
 		}
@@ -80,26 +78,23 @@ var TestCmd = &cobra.Command{
 		}
 
 		// Generate coverage report
-		if cover {
-			// spell-checker: ignore covdata textfmt
-			mergedPath := filepath.Join(coveragePath, "merged")
-			workspace.ResetDir(mergedPath)
-			workspace.Run("go", "tool", "covdata", "merge",
-				"-i", fmt.Sprintf("%s/integration,%s/unit", coveragePath, coveragePath),
-				"-o", mergedPath)
-			workspace.Run("go", "tool", "covdata", "textfmt",
-				"-i", mergedPath,
-				"-o", filepath.Join(coveragePath, "coverage.txt"))
-			workspace.Run("go", "tool", "cover",
-				"-html", filepath.Join(coveragePath, "coverage.txt"),
-				"-o", filepath.Join(coveragePath, "coverage.html"))
-		}
+		// spell-checker: ignore covdata textfmt
+		mergedPath := filepath.Join(coveragePath, "merged")
+		workspace.ResetDir(mergedPath)
+		workspace.Run("go", "tool", "covdata", "merge",
+			"-i", fmt.Sprintf("%s/integration,%s/unit", coveragePath, coveragePath),
+			"-o", mergedPath)
+		workspace.Run("go", "tool", "covdata", "textfmt",
+			"-i", mergedPath,
+			"-o", filepath.Join(coveragePath, "coverage.txt"))
+		workspace.Run("go", "tool", "cover",
+			"-html", filepath.Join(coveragePath, "coverage.txt"),
+			"-o", filepath.Join(coveragePath, "coverage.html"))
 	},
 }
 
 func init() {
 	TestCmd.Flags().Bool("clean", false, "Clean test cache before running tests.")
-	TestCmd.Flags().Bool("cover", false, "Run integration tests.")
 
 	TestCmd.AddCommand(SetupCmd)
 }

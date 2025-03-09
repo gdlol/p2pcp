@@ -47,7 +47,7 @@ func registerErrorHandler(host host.Host, peerID peer.ID, handler func(string)) 
 }
 
 func sendError(ctx context.Context, host host.Host, peerID peer.ID, errStr string) error {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	b := backoff.NewExponentialBackoff(
 		0, 3*time.Second, backoff.NoJitter,
