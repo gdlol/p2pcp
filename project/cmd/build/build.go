@@ -12,15 +12,20 @@ import (
 func Run() {
 	os.Setenv("CGO_ENABLED", "0")
 	projectPath := workspace.GetProjectPath()
-	workspace.ResetDir(filepath.Join(projectPath, "bin"))
+	binPath := filepath.Join(projectPath, "bin")
+
+	// Output binaries for the main module.
 	for _, module := range workspace.GetModules() {
 		moduleName := filepath.Base(module)
 		output := "/dev/null"
 		if moduleName == project.Name {
-			output = filepath.Join(projectPath, "bin", moduleName)
+			output = filepath.Join(binPath, moduleName)
 		}
 		workspace.Run("go", "build", "-o", output, module)
 	}
+
+	// Build multi-arch image.
+	BuildImage(false)
 }
 
 var BuildCmd = &cobra.Command{

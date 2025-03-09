@@ -50,3 +50,11 @@ func GetModules() []string {
 	}
 	return modules
 }
+
+func SetEnv(key, value string) (restore func()) {
+	originalValue := os.Getenv(key)
+	os.Setenv(key, value)
+	return func() {
+		os.Setenv(key, originalValue)
+	}
+}

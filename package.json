@@ -3,9 +3,11 @@
   "type": "module",
   "scripts": {
     "build": "go run project build",
+    "codecov": "go run project codecov",
     "format": "go run project format",
     "go-install": "go run project install",
     "lint": "go run project lint",
+    "publish": "go run project publish",
     "restore": "go run project restore",
     "sync": "go run project sync",
     "test": "go run project test",

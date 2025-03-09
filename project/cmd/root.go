@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"project/cmd/build"
+	"project/cmd/codecov"
 	"project/cmd/format"
 	"project/cmd/install"
 	"project/cmd/lint"
+	"project/cmd/publish"
 	"project/cmd/restore"
 	"project/cmd/sync"
 	"project/cmd/test"
@@ -26,12 +28,14 @@ func Execute() error {
 
 func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	rootCmd.AddCommand(restore.RestoreCmd)
 	rootCmd.AddCommand(build.BuildCmd)
+	rootCmd.AddCommand(lint.LintCmd)
 	rootCmd.AddCommand(format.FormatCmd)
 	rootCmd.AddCommand(install.InstallCmd)
-	rootCmd.AddCommand(lint.LintCmd)
-	rootCmd.AddCommand(restore.RestoreCmd)
 	rootCmd.AddCommand(sync.SyncCmd)
 	rootCmd.AddCommand(test.TestCmd)
+	rootCmd.AddCommand(codecov.CodecovCommand)
+	rootCmd.AddCommand(publish.PublishCmd)
 	rootCmd.AddCommand(update.UpdateCmd)
 }

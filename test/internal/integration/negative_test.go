@@ -37,9 +37,9 @@ func TestPrivateNetwork_DefaultDenyConfirm(t *testing.T) {
 
 	ctx := t.Context()
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send --private")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send --private")
 	defer restoreSenderArgs()
-	restoreReceiverStdin := setEnv("RECEIVER_STDIN", "\n")
+	restoreReceiverStdin := workspace.SetEnv("RECEIVER_STDIN", "\n")
 	defer restoreReceiverStdin()
 
 	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
@@ -56,7 +56,7 @@ func TestPrivateNetwork_SenderNonExistPath(t *testing.T) {
 
 	ctx := t.Context()
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send file --strict --private")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send file --strict --private")
 	defer restoreSenderArgs()
 
 	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
@@ -73,7 +73,7 @@ func TestPrivateNetwork_ReceiverNonExistDir(t *testing.T) {
 
 	ctx := t.Context()
 
-	restoreReceiverTargetPath := setEnv("RECEIVER_TARGET_PATH", "/data/test1/test2")
+	restoreReceiverTargetPath := workspace.SetEnv("RECEIVER_TARGET_PATH", "/data/test1/test2")
 	defer restoreReceiverTargetPath()
 
 	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
@@ -90,7 +90,7 @@ func TestPrivateNetwork_ReceiverInvalidPath(t *testing.T) {
 
 	ctx := t.Context()
 
-	restoreReceiverTargetPath := setEnv("RECEIVER_TARGET_PATH", "/data/file")
+	restoreReceiverTargetPath := workspace.SetEnv("RECEIVER_TARGET_PATH", "/data/file")
 	defer restoreReceiverTargetPath()
 	receiverPath := filepath.Join(receiverDataPath, "file")
 	generateFile(receiverPath, 1024)
@@ -109,11 +109,11 @@ func TestPrivateNetwork_WrongSecret(t *testing.T) {
 
 	ctx := t.Context()
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send --private")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send --private")
 	defer restoreSenderArgs()
-	restoreReceiverStdin := setEnv("RECEIVER_STDIN", "y\n")
+	restoreReceiverStdin := workspace.SetEnv("RECEIVER_STDIN", "y\n")
 	defer restoreReceiverStdin()
-	restoreReceiveSecret := setEnv("RECEIVER_SECRET", "abcdef")
+	restoreReceiveSecret := workspace.SetEnv("RECEIVER_SECRET", "abcdef")
 	defer restoreReceiveSecret()
 
 	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
@@ -132,9 +132,9 @@ func TestPrivateNetwork_WrongSecret_Strict(t *testing.T) {
 
 	ctx := t.Context()
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send --private --strict")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send --private --strict")
 	defer restoreSenderArgs()
-	restoreReceiveSecret := setEnv("RECEIVER_SECRET", "abcdef")
+	restoreReceiveSecret := workspace.SetEnv("RECEIVER_SECRET", "abcdef")
 	defer restoreReceiveSecret()
 
 	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
@@ -145,7 +145,7 @@ func TestPrivateNetwork_WrongSecret_Strict(t *testing.T) {
 		docker.AssertContainerLogNotContains(ctx, "sender",
 			"Receiver ID:", "Sending...", "failed to authenticate receiver")
 
-		restoreReceiveSecret := setEnv("RECEIVER_SECRET", "")
+		restoreReceiveSecret := workspace.SetEnv("RECEIVER_SECRET", "")
 		defer restoreReceiveSecret()
 
 		// Retry with correct secret
@@ -161,7 +161,7 @@ func TestPrivateNetwork_SenderError(t *testing.T) {
 
 	ctx := t.Context()
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send file --strict --private")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send file --strict --private")
 	defer restoreSenderArgs()
 
 	senderPath := filepath.Join(senderDataPath, "file")
@@ -184,9 +184,11 @@ func TestPrivateNetwork_ReceiverError(t *testing.T) {
 
 	ctx := t.Context()
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/file --strict --private")
+	restoreSenderArgs := workspace.SetEnv(
+		"SENDER_ARGS",
+		"send /testdata/transfer_file_with_subdir/file --strict --private")
 	defer restoreSenderArgs()
-	restoreReceiverTargetPath := setEnv("RECEIVER_TARGET_PATH", "/data/test1/test2")
+	restoreReceiverTargetPath := workspace.SetEnv("RECEIVER_TARGET_PATH", "/data/test1/test2")
 	defer restoreReceiverTargetPath()
 
 	receiverPath := filepath.Join(receiverDataPath, "test1/test2/file")
@@ -210,7 +212,7 @@ func TestRelayNetwork_SenderCancel(t *testing.T) {
 
 	ctx := t.Context()
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send large_file --strict")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send large_file --strict")
 	defer restoreSenderArgs()
 
 	senderPath := filepath.Join(senderDataPath, "large_file")
@@ -235,7 +237,7 @@ func TestRelayNetwork_ReceiverCancel(t *testing.T) {
 
 	ctx := t.Context()
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send large_file --strict")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send large_file --strict")
 	defer restoreSenderArgs()
 
 	senderPath := filepath.Join(senderDataPath, "large_file")
@@ -260,7 +262,7 @@ func TestPrivateNetwork_SendDir_OverwriteFile(t *testing.T) {
 
 	ctx := t.Context()
 
-	restore := setEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/subdir --strict --private")
+	restore := workspace.SetEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/subdir --strict --private")
 	defer restore()
 
 	receiverPath := filepath.Join(receiverDataPath, "subdir")

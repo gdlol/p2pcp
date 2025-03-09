@@ -1,4 +1,4 @@
-FROM gcr.io/distroless/static-debian12:debug
+FROM gcr.io/distroless/static-debian12
 
 COPY bin/integration/p2pcp /p2pcp
 COPY bin/integration/test /test

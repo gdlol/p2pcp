@@ -7,13 +7,16 @@
   "words": [
     "autorelay",
     "briandowns",
+    "buildx",
     "devcontainer",
     "devcontainers",
     "distroless",
     "drunkenbishop",
+    "GOARCH",
     "GOCOVERDIR",
     "gofmt",
     "healthcheck",
+    "ldflags",
     "libp2p",
     "mdns",
     "modfile",
@@ -26,10 +29,13 @@
     "Peerstore",
     "progressbar",
     "pstoremem",
+    "riscv",
     "schollz",
     "stdcopy",
     "stretchr",
+    "TARGETPLATFORM",
     "testdata",
+    "trimpath",
     "workfile"
   ]
 }

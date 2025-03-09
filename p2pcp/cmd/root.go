@@ -13,14 +13,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "0.1.0"
-
 var rootCmd = &cobra.Command{
 	Use:           project.Name,
 	Short:         "Peer to Peer Copy, a peer-to-peer data transfer tool.",
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	Version:       version,
+	Version:       project.Version,
 }
 
 func Execute() {

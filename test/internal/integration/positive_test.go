@@ -59,7 +59,7 @@ func TestPrivateNetwork(t *testing.T) {
 func TestPrivateNetwork_SendDir(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	restore := setEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/subdir --strict --private")
+	restore := workspace.SetEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/subdir --strict --private")
 	defer restore()
 
 	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/subdir")
@@ -74,7 +74,7 @@ func TestPrivateNetwork_SendDir(t *testing.T) {
 func TestPrivateNetwork_SendDir_OverwriteDir(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	restore := setEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/subdir --strict --private")
+	restore := workspace.SetEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/subdir --strict --private")
 	defer restore()
 
 	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/subdir")
@@ -91,7 +91,7 @@ func TestPrivateNetwork_SendDir_OverwriteDir(t *testing.T) {
 func TestPrivateNetwork_SendDir_OverwriteDirWithFile(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	restore := setEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/subdir --strict --private")
+	restore := workspace.SetEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/subdir --strict --private")
 	defer restore()
 
 	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/subdir")
@@ -132,7 +132,7 @@ func TestPrivateNetwork_SendDir_OverwriteLink(t *testing.T) {
 func TestPrivateNetwork_SendFile(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	restore := setEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/file --strict --private")
+	restore := workspace.SetEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/file --strict --private")
 	defer restore()
 
 	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/file")
@@ -147,7 +147,7 @@ func TestPrivateNetwork_SendFile(t *testing.T) {
 func TestPrivateNetwork_SendFile_Overwrite(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	restore := setEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/file --strict --private")
+	restore := workspace.SetEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/file --strict --private")
 	defer restore()
 
 	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/file")
@@ -163,9 +163,11 @@ func TestPrivateNetwork_SendFile_Overwrite(t *testing.T) {
 func TestPrivateNetwork_SendFileWithAbsPath(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/file --strict --private")
+	restoreSenderArgs := workspace.SetEnv(
+		"SENDER_ARGS",
+		"send /testdata/transfer_file_with_subdir/file --strict --private")
 	defer restoreSenderArgs()
-	restoreReceiverTargetPath := setEnv("RECEIVER_TARGET_PATH", "/data/test1/test2")
+	restoreReceiverTargetPath := workspace.SetEnv("RECEIVER_TARGET_PATH", "/data/test1/test2")
 	defer restoreReceiverTargetPath()
 
 	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/file")
@@ -181,9 +183,11 @@ func TestPrivateNetwork_SendFileWithAbsPath(t *testing.T) {
 func TestPrivateNetwork_SendFileWithRelativePath(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send ../testdata/transfer_file_with_subdir/file --strict --private")
+	restoreSenderArgs := workspace.SetEnv(
+		"SENDER_ARGS",
+		"send ../testdata/transfer_file_with_subdir/file --strict --private")
 	defer restoreSenderArgs()
-	restoreReceiverTargetPath := setEnv("RECEIVER_TARGET_PATH", "test1/test2")
+	restoreReceiverTargetPath := workspace.SetEnv("RECEIVER_TARGET_PATH", "test1/test2")
 	defer restoreReceiverTargetPath()
 
 	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/file")
@@ -199,13 +203,13 @@ func TestPrivateNetwork_SendFileWithRelativePath(t *testing.T) {
 func TestPrivateNetwork_SendFileWithRelativePath_Chdir(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	restoreSenderDir := setEnv("SENDER_DIR", "/testdata/transfer_file_with_subdir")
+	restoreSenderDir := workspace.SetEnv("SENDER_DIR", "/testdata/transfer_file_with_subdir")
 	defer restoreSenderDir()
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send file --strict --private")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send file --strict --private")
 	defer restoreSenderArgs()
-	restoreReceiverDir := setEnv("RECEIVER_DIR", "/data/test1")
+	restoreReceiverDir := workspace.SetEnv("RECEIVER_DIR", "/data/test1")
 	defer restoreReceiverDir()
-	restoreReceiverTargetPath := setEnv("RECEIVER_TARGET_PATH", "test2")
+	restoreReceiverTargetPath := workspace.SetEnv("RECEIVER_TARGET_PATH", "test2")
 	defer restoreReceiverTargetPath()
 
 	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/file")
@@ -221,9 +225,9 @@ func TestPrivateNetwork_SendFileWithRelativePath_Chdir(t *testing.T) {
 func TestPrivateNetwork_SendFile_Confirm(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/file --private")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send /testdata/transfer_file_with_subdir/file --private")
 	defer restoreSenderArgs()
-	restoreReceiverStdin := setEnv("RECEIVER_STDIN", "y\n")
+	restoreReceiverStdin := workspace.SetEnv("RECEIVER_STDIN", "y\n")
 	defer restoreReceiverStdin()
 
 	expectedPath := filepath.Join(workspace.GetTestDataPath(), "transfer_file_with_subdir/file")
@@ -238,7 +242,7 @@ func TestPrivateNetwork_SendFile_Confirm(t *testing.T) {
 func TestPrivateNetwork_LargeFile(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send test --strict --private")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send test --strict --private")
 	defer restoreSenderArgs()
 
 	expectedPath := filepath.Join(senderDataPath, "test")
@@ -270,7 +274,7 @@ func TestPublicNetwork(t *testing.T) {
 func TestRelayNetwork(t *testing.T) {
 	t.Cleanup(cleanup)
 
-	restoreSenderArgs := setEnv("SENDER_ARGS", "send test -sd")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send test -sd")
 	defer restoreSenderArgs()
 
 	expectedPath := filepath.Join(senderDataPath, "test")

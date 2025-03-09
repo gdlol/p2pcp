@@ -30,17 +30,26 @@ func RunCtx(ctx context.Context, cmd string, args ...string) {
 
 func RunWithChdir(path string, cmd string, args ...string) {
 	log.Println("chdir:", path)
-	restore := Chdir(path)
-	defer restore()
-	Run(cmd, args...)
-
+	log.Println(cmd, strings.Join(args, " "))
+	c := exec.Command(cmd, args...)
+	c.Dir = path
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	err := c.Run()
+	Check(err)
 }
 
 func RunCtxWithChdir(ctx context.Context, path string, cmd string, args ...string) {
 	log.Println("chdir:", path)
-	restore := Chdir(path)
-	defer restore()
-	RunCtx(ctx, cmd, args...)
+	log.Println(cmd, strings.Join(args, " "))
+	c := exec.CommandContext(ctx, cmd, args...)
+	c.Dir = path
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	err := c.Run()
+	Check(err)
 }
 
 func GetOutput(cmd string, args ...string) string {

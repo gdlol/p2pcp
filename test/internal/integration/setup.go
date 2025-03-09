@@ -24,14 +24,6 @@ func sudoResetDir(path string) {
 	workspace.Run("mkdir", "--parents", path)
 }
 
-func setEnv(key, value string) (restore func()) {
-	originalValue := os.Getenv(key)
-	os.Setenv(key, value)
-	return func() {
-		os.Setenv(key, originalValue)
-	}
-}
-
 func generateFile(path string, size int64) {
 	err := os.MkdirAll(filepath.Dir(path), 0755)
 	workspace.Check(err)
