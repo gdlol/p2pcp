@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - "[0-9]+.[0-9]+.[0-9]+"
-  workflow_dispatch:
 
 jobs:
   publish:
@@ -23,5 +22,5 @@ jobs:
           env: |
             CR_REGISTRY=ghcr.io
             CR_IMAGE_NAME=${{ github.repository }}
-            CR_VERSION=0.0.1
+            CR_VERSION=${{ github.ref_name }}
             CR_PAT=${{ secrets.CR_PAT }}
