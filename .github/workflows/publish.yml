@@ -1,0 +1,27 @@
+name: "Publish"
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare devcontainer
+        uses: ./.github/workflows/devcontainer.yml
+
+      - name: Publish
+        uses: devcontainers/ci@v0.3
+        with:
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
+          push: never
+          runCmd: pnpm run publish
+        env:
+          CR_REGISTRY: ghcr.io
+          CR_IMAGE_NAME: ${{ github.repository }}
+          CR_VERSION: ${{ github.ref_name }}
+          CR_PAT: ${{ secrets.CR_PAT }}
