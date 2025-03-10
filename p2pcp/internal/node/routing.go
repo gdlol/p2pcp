@@ -3,12 +3,16 @@ package node
 import (
 	"context"
 	"log/slog"
+	"math"
+	"math/rand"
+	"time"
 
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/routing"
+	"github.com/libp2p/go-libp2p/p2p/discovery/backoff"
 )
 
 const PeerRoutingTag = "p2pcp/peer-routing"
@@ -24,14 +28,30 @@ func (d *dhtRouting) FindPeer(ctx context.Context, id peer.ID) (peer.AddrInfo, e
 		return peer.AddrInfo{ID: id}, nil
 	} else {
 		_, err := d.host.Peerstore().Get(id, PeerRoutingTag)
-		if err == nil {
-			slog.Debug("dhtRouting: Finding peer address with DHT.", "peer", id)
-			return d.dht.FindPeer(ctx, id)
+		if err != nil {
+			if err != peerstore.ErrNotFound {
+				slog.Warn("dhtRouting: Error getting PeerRoutingTag for peer.", "peer", id, "error", err)
+			}
+			return peer.AddrInfo{ID: id}, err
 		}
-		if err != peerstore.ErrNotFound {
-			slog.Warn("dhtRouting: Error getting PeerRoutingTag for peer.", "peer", id, "error", err)
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+		addrInfo := peer.AddrInfo{ID: id}
+		b := backoff.NewExponentialBackoff(
+			0, 3*time.Second, backoff.NoJitter,
+			100*time.Millisecond, math.Sqrt2, 0,
+			rand.NewSource(0))()
+		for ctx.Err() == nil {
+			addrInfo, err = d.dht.FindPeer(ctx, id)
+			if len(addrInfo.Addrs) == 0 || err != nil {
+				slog.Debug("dhtRouting: Failed to find peer with DHT.", "peer", id, "error", err)
+				time.Sleep(b.Delay())
+				continue
+			} else {
+				return addrInfo, nil
+			}
 		}
-		return peer.AddrInfo{ID: id}, nil
+		return addrInfo, ctx.Err()
 	}
 }
 

@@ -212,7 +212,7 @@ func TestRelayNetwork_SenderCancel(t *testing.T) {
 
 	ctx := t.Context()
 
-	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send large_file --strict")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send large_file --strict --debug")
 	defer restoreSenderArgs()
 
 	senderPath := filepath.Join(senderDataPath, "large_file")
@@ -222,6 +222,8 @@ func TestRelayNetwork_SenderCancel(t *testing.T) {
 	runTestNegative(ctx, composeFilePath, func() {
 		_, err := docker.WaitForContainerLog(ctx, "receiver", time.Minute, "large_file")
 		workspace.Check(err)
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
 		workspace.RunCtx(ctx, "docker", "kill", "sender", "--signal", "SIGINT")
 		docker.WaitContainer(ctx, "sender")
 		docker.WaitContainer(ctx, "receiver")
@@ -237,7 +239,7 @@ func TestRelayNetwork_ReceiverCancel(t *testing.T) {
 
 	ctx := t.Context()
 
-	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send large_file --strict")
+	restoreSenderArgs := workspace.SetEnv("SENDER_ARGS", "send large_file --strict --debug")
 	defer restoreSenderArgs()
 
 	senderPath := filepath.Join(senderDataPath, "large_file")
@@ -247,6 +249,8 @@ func TestRelayNetwork_ReceiverCancel(t *testing.T) {
 	runTestNegative(ctx, composeFilePath, func() {
 		_, err := docker.WaitForContainerLog(ctx, "receiver", time.Minute, "large_file")
 		workspace.Check(err)
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
 		workspace.RunCtx(ctx, "docker", "kill", "receiver", "--signal", "SIGINT")
 		docker.WaitContainer(ctx, "receiver")
 		docker.WaitContainer(ctx, "sender")

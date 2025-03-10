@@ -76,6 +76,9 @@ func (c *channelReader) read(p *[readBufferSize]byte) (n int, err error) {
 }
 
 func (c *channelReader) Read(p []byte) (n int, err error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
 	if c.readBuffer.isEmpty() {
 		c.readBuffer.reset()
 		n, err := c.read(c.readBuffer.buffer)

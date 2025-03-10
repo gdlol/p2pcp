@@ -71,6 +71,8 @@ func (s *sender) WaitForReceiver(ctx context.Context, secretHash []byte, path st
 					select {
 					case authenticate <- remotePeer:
 						host.ConnManager().Protect(remotePeer, "receiver")
+						// Mark receiver as candidate for DHT routing.
+						host.Peerstore().Put(remotePeer, node.PeerRoutingTag, struct{}{})
 					default:
 					}
 				}
@@ -120,10 +122,6 @@ func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) (err e
 
 	streams := make(chan io.ReadWriteCloser, 1)
 	writer := channel.NewChannelWriter(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
-		if canceling {
-			<-ctx.Done()
-			return nil, ctx.Err()
-		}
 		select {
 		case stream := <-streams:
 			return stream, nil
@@ -143,6 +141,11 @@ func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) (err e
 			slog.Warn("Unauthorized transfer stream.")
 			stream.Close()
 		} else {
+			if canceling {
+				host.RemoveStreamHandler(transfer.Protocol)
+				stream.Close()
+				return
+			}
 			select {
 			case streams <- stream:
 			case <-ctx.Done():

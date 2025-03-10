@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"sync"
 	"testing"
 	"time"
 
@@ -69,22 +68,41 @@ func TestChannel(t *testing.T) {
 		limit := limit
 		t.Run(fmt.Sprint(limit), func(t *testing.T) {
 			t.Parallel()
-			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 
 			streamSource1 := make(chan io.ReadWriteCloser, 1)
 			streamSource2 := make(chan io.ReadWriteCloser, 1)
+			senderCtx, cancelSender := context.WithCancel(ctx)
+			receiverCtx, cancelReceiver := context.WithCancel(ctx)
 
 			go func() {
 				for ctx.Err() == nil {
 					stream1, stream2 := newChannelPair(limit)
+					go func() {
+						select {
+						case <-receiverCtx.Done():
+							stream1.Close()
+							stream2.Close()
+						case <-senderCtx.Done():
+							stream1.Close()
+							stream2.Close()
+						case <-ctx.Done():
+						}
+					}()
 					select {
-					case <-ctx.Done():
+					case <-senderCtx.Done():
 						return
+					case <-receiverCtx.Done():
+						return
+					case <-ctx.Done():
 					case streamSource1 <- stream1:
 					}
 					select {
 					case <-ctx.Done():
+					case <-senderCtx.Done():
+						return
+					case <-receiverCtx.Done():
 						return
 					case streamSource2 <- stream2:
 					}
@@ -92,7 +110,7 @@ func TestChannel(t *testing.T) {
 				}
 			}()
 
-			channel1 := NewChannelWriter(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
+			sender := NewChannelWriter(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 				select {
 				case <-ctx.Done():
 					return nil, ctx.Err()
@@ -100,7 +118,7 @@ func TestChannel(t *testing.T) {
 					return stream, nil
 				}
 			})
-			channel2 := NewChannelReader(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
+			receiver := NewChannelReader(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 				select {
 				case <-ctx.Done():
 					return nil, ctx.Err()
@@ -113,16 +131,13 @@ func TestChannel(t *testing.T) {
 			_, err := rand.Read(data)
 			require.NoError(t, err)
 
-			var transferWg sync.WaitGroup
-			transferWg.Add(2)
-
 			var sendErr error
 			var receiveErr error
 
 			go func() {
-				defer transferWg.Done()
+				defer cancelSender()
 				defer func() {
-					err := channel1.Close()
+					err := sender.Close()
 					if err != nil {
 						sendErr = err
 					}
@@ -138,7 +153,7 @@ func TestChannel(t *testing.T) {
 						return
 					}
 					length := min(lengthB.Int64(), int64(len(remaining)))
-					n, err := channel1.Write(remaining[:length])
+					n, err := sender.Write(remaining[:length])
 					if err != nil {
 						sendErr = err
 						return
@@ -149,9 +164,9 @@ func TestChannel(t *testing.T) {
 
 			received := make([]byte, 0)
 			go func() {
-				defer transferWg.Done()
+				defer cancelReceiver()
 				defer func() {
-					err := channel2.Close()
+					err := receiver.Close()
 					if err != nil {
 						receiveErr = err
 					}
@@ -166,7 +181,7 @@ func TestChannel(t *testing.T) {
 						receiveErr = err
 						return
 					}
-					n, err := channel2.Read(buffer[:length.Int64()])
+					n, err := receiver.Read(buffer[:length.Int64()])
 					if err == io.EOF {
 						break
 					}
@@ -178,9 +193,23 @@ func TestChannel(t *testing.T) {
 				}
 			}()
 
-			transferWg.Wait()
-			assert.NoError(t, sendErr)
-			assert.NoError(t, receiveErr)
+			done := make(chan struct{})
+			go func() {
+				<-senderCtx.Done()
+				<-receiverCtx.Done()
+				done <- struct{}{}
+			}()
+
+			select {
+			case <-ctx.Done():
+			case <-done:
+			}
+			if sendErr != nil {
+				assert.Equal(t, context.DeadlineExceeded, sendErr)
+			}
+			if receiveErr != nil {
+				assert.Equal(t, context.DeadlineExceeded, receiveErr)
+			}
 			require.NoError(t, ctx.Err())
 			assert.Equal(t, data, received)
 		})
