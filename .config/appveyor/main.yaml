@@ -7,13 +7,20 @@ image: Ubuntu2004
 build_script:
   - sh: >-
       set -e
+
       npm install --global @devcontainers/cli
+
       devcontainer build --workspace-folder .
 test_script:
   - sh: >-
       set -e
+
       devcontainer up --workspace-folder .
+
       devcontainer exec --workspace-folder . pnpm build
+
       devcontainer exec --workspace-folder . pnpm lint
+
       devcontainer exec --workspace-folder . pnpm test
+
       devcontainer exec --workspace-folder . --remote-env CODECOV_TOKEN=${CODECOV_TOKEN} pnpm codecov

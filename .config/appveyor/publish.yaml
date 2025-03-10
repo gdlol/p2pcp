@@ -9,10 +9,14 @@ environment:
 build_script:
   - sh: >-
       set -e
+
       npm install --global @devcontainers/cli
+
       devcontainer build --workspace-folder .
 deploy_script:
   - sh: >-
       set -e
+
       devcontainer up --workspace-folder .
+
       devcontainer exec --workspace-folder . --remote-env CR_PAT=${CR_PAT} pnpm run publish
