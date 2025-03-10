@@ -40,14 +40,9 @@ jobs:
         with:
           cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
           push: never
-          runCmd: pnpm build
-
-      - name: Build Multi-arch image
-        uses: devcontainers/ci@v0.3
-        with:
-          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
-          push: never
-          runCmd: pnpm build docker
+          runCmd: |
+            pnpm build
+            pnpm build docker
 
       - name: Test
         uses: devcontainers/ci@v0.3
