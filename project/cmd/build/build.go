@@ -23,9 +23,6 @@ func Run() {
 		}
 		workspace.Run("go", "build", "-o", output, module)
 	}
-
-	// Build multi-arch image.
-	BuildImage(false)
 }
 
 var BuildCmd = &cobra.Command{
@@ -33,4 +30,8 @@ var BuildCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		Run()
 	},
+}
+
+func init() {
+	BuildCmd.AddCommand(dockerCmd)
 }

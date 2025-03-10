@@ -16,7 +16,12 @@
   },
   "customizations": {
     "vscode": {
-      "extensions": ["esbenp.prettier-vscode", "ms-azuretools.vscode-docker", "streetsidesoftware.code-spell-checker"],
+      "extensions": [
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker",
+        "streetsidesoftware.code-spell-checker",
+        "github.vscode-github-actions"
+      ],
       "settings": {
         "files.associations": { "ignore": "ignore", "attributes": "properties", "rc": "properties" },
         "editor.formatOnSave": true,

@@ -1,0 +1,32 @@
+name: "Publish"
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (GitHub)
+        uses: actions/checkout@v4
+
+      - name: Pre-build dev container image
+        uses: devcontainers/ci@v0.3
+        with:
+          imageName: ghcr.io/${{ github.repository }}/devcontainer
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
+          push: never
+          runCmd: |
+            pnpm restore
+            pnpm run publish
+        env:
+          CR_REGISTRY: ghcr.io
+          CR_IMAGE_NAME: ${{ github.repository }}
+          #   CR_VERSION: ${{ github.ref_name }}
+          CR_VERSION: 0.0.0
+          CR_PAT: ${{ secrets.CR_PAT }}
