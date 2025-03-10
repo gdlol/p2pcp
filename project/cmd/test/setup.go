@@ -33,7 +33,7 @@ func setup() {
 		projectPath)
 }
 
-var SetupCmd = &cobra.Command{
+var setupCmd = &cobra.Command{
 	Use: "setup",
 	Run: func(cmd *cobra.Command, args []string) {
 		setup()

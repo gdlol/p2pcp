@@ -11,6 +11,8 @@ import (
 	"project/pkg/workspace"
 	"strings"
 	"sync"
+
+	"github.com/spf13/cobra"
 )
 
 type platformEnv struct {
@@ -94,4 +96,11 @@ func BuildImage(publish bool) {
 	}
 	args = append(args, projectPath)
 	workspace.Run("docker", args...)
+}
+
+var dockerCmd = &cobra.Command{
+	Use: "docker",
+	Run: func(cmd *cobra.Command, args []string) {
+		BuildImage(false)
+	},
 }

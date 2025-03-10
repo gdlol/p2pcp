@@ -1,0 +1,81 @@
+name: "main"
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  devcontainer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (GitHub)
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ github.token }}
+
+      - name: Pre-build dev container image
+        uses: devcontainers/ci@v0.3
+        with:
+          imageName: ghcr.io/${{ github.repository }}/devcontainer
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
+          push: always
+          runCmd: pnpm restore
+
+  build:
+    runs-on: ubuntu-latest
+    needs: devcontainer
+    steps:
+      - name: Build
+        uses: devcontainers/ci@v0.3
+        with:
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
+          push: never
+          runCmd: pnpm build
+
+  build-image:
+    runs-on: ubuntu-latest
+    needs: devcontainer
+    steps:
+      - name: Build Multi-arch Image
+        uses: devcontainers/ci@v0.3
+        with:
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
+          push: never
+          runCmd: pnpm build docker
+
+  lint:
+    runs-on: ubuntu-latest
+    needs: devcontainer
+    steps:
+      - name: Lint
+        uses: devcontainers/ci@v0.3
+        with:
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
+          push: never
+          runCmd: pnpm lint
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [build, build-image, lint]
+    steps:
+      - name: Test
+        uses: devcontainers/ci@v0.3
+        with:
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
+          push: never
+          runCmd: pnpm test
+
+      - name: Codecov
+        uses: devcontainers/ci@v0.3
+        with:
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
+          push: never
+          runCmd: pnpm codecov
+          env: |
+            CODECOV_TOKEN=${{ secrets.CODECOV_TOKEN }}
