@@ -220,7 +220,9 @@ func TestRelayNetwork_SenderCancel(t *testing.T) {
 
 	composeFilePath := filepath.Join(getTestDataPath(), "relay_network/compose.yaml")
 	runTestNegative(ctx, composeFilePath, func() {
-		_, err := docker.WaitForContainerLog(ctx, "receiver", time.Minute, "large_file")
+		_, err := docker.WaitForContainerLog(ctx, "receiver", 3*time.Minute, "Connected to WAN.")
+		workspace.Check(err)
+		_, err = docker.WaitForContainerLog(ctx, "receiver", time.Minute, "large_file")
 		workspace.Check(err)
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
@@ -247,7 +249,9 @@ func TestRelayNetwork_ReceiverCancel(t *testing.T) {
 
 	composeFilePath := filepath.Join(getTestDataPath(), "relay_network/compose.yaml")
 	runTestNegative(ctx, composeFilePath, func() {
-		_, err := docker.WaitForContainerLog(ctx, "receiver", time.Minute, "large_file")
+		_, err := docker.WaitForContainerLog(ctx, "receiver", 3*time.Minute, "Connected to WAN.")
+		workspace.Check(err)
+		_, err = docker.WaitForContainerLog(ctx, "receiver", time.Minute, "large_file")
 		workspace.Check(err)
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
