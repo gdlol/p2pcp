@@ -24,8 +24,8 @@ func Run() {
 		workspace.Run("go", "build", "-o", output, module)
 	}
 
-	// Build multi-arch image.
-	BuildImage(false)
+	// // Build multi-arch image.
+	// BuildImage(false)
 }
 
 var BuildCmd = &cobra.Command{
