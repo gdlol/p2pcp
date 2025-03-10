@@ -23,5 +23,5 @@ jobs:
           env: |
             CR_REGISTRY=ghcr.io
             CR_IMAGE_NAME=${{ github.repository }}
-            CR_VERSION=0.0.0
+            CR_VERSION=0.0.1
             CR_PAT=${{ secrets.CR_PAT }}
