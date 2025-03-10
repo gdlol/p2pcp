@@ -41,6 +41,7 @@ jobs:
           cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
           push: never
           runCmd: |
+            set -e
             pnpm build
             pnpm build docker
 
@@ -50,6 +51,7 @@ jobs:
           cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
           push: never
           runCmd: |
+            set -e
             pnpm test
             pnpm codecov
           env: |
