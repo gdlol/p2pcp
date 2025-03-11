@@ -13,27 +13,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var rootCmd = &cobra.Command{
+var RootCmd = &cobra.Command{
 	Use:           project.Name,
-	Short:         "Peer to Peer Copy, a peer-to-peer data transfer tool.",
+	Short:         "Peer to Peer Copy, a peer-to-peer data transfer tool",
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Version:       project.Version,
 }
 
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := RootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
 func init() {
-	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	RootCmd.CompletionOptions.DisableDefaultCmd = true
 
-	rootCmd.PersistentFlags().BoolP("debug", "d", false, "show debug logs")
-	rootCmd.PersistentFlags().BoolP("private", "p", false, "only connect to private networks")
-	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+	RootCmd.PersistentFlags().BoolP("debug", "d", false, "show debug logs")
+	RootCmd.PersistentFlags().BoolP("private", "p", false, "only connect to private networks")
+	RootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		config.LoadConfig()
 
 		debug, _ := cmd.Flags().GetBool("debug")
@@ -44,6 +44,6 @@ func init() {
 		}
 	}
 
-	rootCmd.AddCommand(send.SendCmd)
-	rootCmd.AddCommand(receive.ReceiveCmd)
+	RootCmd.AddCommand(send.SendCmd)
+	RootCmd.AddCommand(receive.ReceiveCmd)
 }

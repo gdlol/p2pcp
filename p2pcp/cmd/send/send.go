@@ -12,7 +12,7 @@ import (
 
 var SendCmd = &cobra.Command{
 	Use:   "send [path]",
-	Short: "Sends the specified file/directory to remote peer.",
+	Short: "Sends the specified file/directory to remote peer",
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := cobra.MaximumNArgs(1)(cmd, args); err != nil {
 			fmt.Fprintln(os.Stderr, err)

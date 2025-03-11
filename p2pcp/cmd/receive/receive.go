@@ -12,7 +12,7 @@ import (
 
 var ReceiveCmd = &cobra.Command{
 	Use:   "receive id secret [path]",
-	Short: "Receives file/directory from remote peer to specified directory.",
+	Short: "Receives file/directory from remote peer to specified directory",
 	Args: func(cmd *cobra.Command, args []string) error {
 		if err := cobra.RangeArgs(2, 3)(cmd, args); err != nil {
 			fmt.Fprintln(os.Stderr, err)

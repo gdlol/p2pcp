@@ -1,16 +1,15 @@
 package publish
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
 	"project/cmd/build"
-	"project/pkg/project"
 	"project/pkg/workspace"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/semver"
 )
 
 func Run() error {
@@ -19,14 +18,9 @@ func Run() error {
 	version := os.Getenv("CR_VERSION")
 	token := os.Getenv("CR_PAT")
 
-	var tags []string
-	if len(version) == 0 { // Manually triggered
-		tags = []string{workspace.GetCurrentBranch()}
-	} else {
-		if version != project.Version { // Triggered by Git tag
-			return fmt.Errorf("version mismatch: project.Version=%s CR_VERSION=%s", project.Version, version)
-		}
-		tags = []string{version, "latest"}
+	tags := []string{version}
+	if semver.IsValid(version) {
+		tags = append(tags, "latest")
 	}
 
 	slog.Info("Logging in to the container registry...")

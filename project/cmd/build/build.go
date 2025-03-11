@@ -29,9 +29,11 @@ var BuildCmd = &cobra.Command{
 	Use: "build",
 	Run: func(cmd *cobra.Command, args []string) {
 		Run()
+		generateDocs()
 	},
 }
 
 func init() {
+	BuildCmd.AddCommand(docsCmd)
 	BuildCmd.AddCommand(dockerCmd)
 }
