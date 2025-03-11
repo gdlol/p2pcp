@@ -50,7 +50,7 @@ func Send(ctx context.Context, path string, strict bool, private bool) error {
 	} else {
 		id = sender.GetAdvertiseTopic()
 	}
-	fmt.Println("Please run the following command on receiver side:")
+	fmt.Println("Please run the following command on the receiver's side:")
 	fmt.Println()
 	if private {
 		fmt.Println(project.Name, "receive", id, secret, "--private")

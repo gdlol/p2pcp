@@ -30,6 +30,8 @@
     "Peerstore",
     "progressbar",
     "pstoremem",
+    "regclient",
+    "regctl",
     "riscv",
     "schollz",
     "stdcopy",
