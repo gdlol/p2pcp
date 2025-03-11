@@ -19,8 +19,12 @@ func Run() error {
 	version := os.Getenv("CR_VERSION")
 	token := os.Getenv("CR_PAT")
 
-	if version != project.Version {
-		return fmt.Errorf("version mismatch: project.Version=%s CR_VERSION=%s", project.Version, version)
+	if len(version) == 0 {
+		version = workspace.GetCurrentBranch()
+	} else {
+		if version != project.Version {
+			return fmt.Errorf("version mismatch: project.Version=%s CR_VERSION=%s", project.Version, version)
+		}
 	}
 
 	slog.Info("Logging in to the container registry...")

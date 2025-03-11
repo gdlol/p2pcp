@@ -4,5 +4,5 @@ import "project/pkg/workspace"
 
 func CSpell() {
 	projectPath := workspace.GetProjectPath()
-	workspace.Run("pnpm", "cspell", projectPath)
+	workspace.Run(projectPath, "pnpm", "cspell", projectPath)
 }
