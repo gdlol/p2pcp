@@ -74,7 +74,7 @@ func buildBinaries() {
 	wg.Wait()
 }
 
-func BuildImage(registry string, imageName string, version string, publish bool) {
+func BuildImage(registry string, imageName string, tags []string, publish bool) {
 	buildBinaries()
 
 	// Build multi-arch image.
@@ -86,9 +86,11 @@ func BuildImage(registry string, imageName string, version string, publish bool)
 	args := []string{
 		"buildx", "build",
 		"--file", filepath.Join(projectPath, "docker/Dockerfile"),
-		"--tag", fmt.Sprintf("%s/%s:latest", registry, imageName),
-		"--tag", fmt.Sprintf("%s/%s:%s", registry, imageName, version),
-		"--platform", strings.Join(platforms, ",")}
+		"--platform", strings.Join(platforms, ","),
+	}
+	for _, tag := range tags {
+		args = append(args, "--tag", fmt.Sprintf("%s/%s:%s", registry, imageName, tag))
+	}
 	if publish {
 		args = append(args, "--push")
 	}
@@ -99,6 +101,6 @@ func BuildImage(registry string, imageName string, version string, publish bool)
 var dockerCmd = &cobra.Command{
 	Use: "docker",
 	Run: func(cmd *cobra.Command, args []string) {
-		BuildImage("local", project.Name, project.Version, false)
+		BuildImage("local", project.Name, nil, false)
 	},
 }

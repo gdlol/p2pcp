@@ -19,12 +19,14 @@ func Run() error {
 	version := os.Getenv("CR_VERSION")
 	token := os.Getenv("CR_PAT")
 
-	if len(version) == 0 {
-		version = workspace.GetCurrentBranch()
+	var tags []string
+	if len(version) == 0 { // Manually triggered
+		tags = []string{workspace.GetCurrentBranch()}
 	} else {
-		if version != project.Version {
+		if version != project.Version { // Triggered by Git tag
 			return fmt.Errorf("version mismatch: project.Version=%s CR_VERSION=%s", project.Version, version)
 		}
+		tags = []string{version, "latest"}
 	}
 
 	slog.Info("Logging in to the container registry...")
@@ -36,7 +38,7 @@ func Run() error {
 	workspace.Check(err)
 
 	slog.Info("Publishing multi-arch image...")
-	build.BuildImage(registry, imageName, version, true)
+	build.BuildImage(registry, imageName, tags, true)
 	return nil
 }
 
