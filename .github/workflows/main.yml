@@ -40,19 +40,20 @@ jobs:
         with:
           cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
           push: never
-          runCmd: |
-            set -e
-            pnpm build
-            pnpm build docker
+          runCmd: pnpm build
 
       - name: Test
         uses: devcontainers/ci@v0.3
         with:
           cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
           push: never
-          runCmd: |
-            set -e
-            pnpm test
-            pnpm codecov
+          runCmd: pnpm test
+
+      - name: Codecov
+        uses: devcontainers/ci@v0.3
+        with:
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
+          push: never
+          runCmd: pnpm codecov
           env: |
             CODECOV_TOKEN=${{ secrets.CODECOV_TOKEN }}

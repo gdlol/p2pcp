@@ -21,7 +21,7 @@ func GetDefaultBranch(ctx context.Context) string {
 }
 
 // Creates pull request from current branch to default branch
-func CreatePullRequest(ctx context.Context, head string, base string) {
+func CreatePullRequest(ctx context.Context) {
 	client := getGitHubClient()
 	defaultBranch := GetDefaultBranch(ctx)
 	currentBranch := GetCurrentBranch()

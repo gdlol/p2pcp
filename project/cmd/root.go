@@ -4,6 +4,7 @@ import (
 	"project/cmd/build"
 	"project/cmd/codecov"
 	"project/cmd/format"
+	"project/cmd/github"
 	"project/cmd/install"
 	"project/cmd/lint"
 	"project/cmd/publish"
@@ -38,4 +39,5 @@ func init() {
 	rootCmd.AddCommand(codecov.CodecovCommand)
 	rootCmd.AddCommand(publish.PublishCmd)
 	rootCmd.AddCommand(update.UpdateCmd)
+	rootCmd.AddCommand(github.GithubCommand)
 }
