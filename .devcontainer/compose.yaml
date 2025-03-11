@@ -2,9 +2,13 @@ services:
   devcontainer:
     env_file:
       - .env
+      - path: local.env
+        required: false
     build:
       context: .
       dockerfile: Dockerfile
+      cache_from:
+        - type=registry,ref=ghcr.io/gdlol/p2pcp/devcontainer
     init: true
     volumes:
       - WORKSPACES:${WORKSPACES}

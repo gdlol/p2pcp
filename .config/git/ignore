@@ -4,6 +4,8 @@ _*
 !**/.devcontainer/**
 !.config/
 !**/.config/**
+!.github/
+local.env
 
 node_modules/
 go.work.sum

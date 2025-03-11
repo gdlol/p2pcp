@@ -3,7 +3,7 @@
   "enableGlobDot": true,
   "useGitignore": true,
   "gitignoreRoot": ".",
-  "ignorePaths": ["LICENSE", "*.sum", "go.mod"],
+  "ignorePaths": ["LICENSE", "*.sum", "go.mod", "local.env"],
   "words": [
     "autorelay",
     "briandowns",
@@ -12,6 +12,7 @@
     "devcontainers",
     "distroless",
     "drunkenbishop",
+    "gdlol",
     "GOARCH",
     "GOCOVERDIR",
     "gofmt",

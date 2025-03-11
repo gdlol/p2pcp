@@ -8,10 +8,13 @@ import (
 
 func Run() {
 	projectPath := workspace.GetProjectPath()
-	workspace.RunWithChdir(projectPath, "go", "work", "sync")
 
-	for _, module := range workspace.GetModules() {
-		workspace.RunWithChdir(module, "go", "mod", "tidy")
+	// Unclear behavior of go work sync, need 2 runs to get stable results.
+	for range 2 {
+		workspace.RunWithChdir(projectPath, "go", "work", "sync")
+		for _, module := range workspace.GetModules() {
+			workspace.RunWithChdir(module, "go", "mod", "tidy")
+		}
 	}
 }
 
