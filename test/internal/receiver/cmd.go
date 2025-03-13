@@ -22,7 +22,7 @@ func Run(ctx context.Context, receiverDir string, stdin string, targetPath strin
 	stdoutLogs, _, err := docker.GetContainerLogs(ctx, "sender")
 	workspace.Check(err)
 	var secret string
-	for _, line := range strings.Split(stdoutLogs, "\n") {
+	for line := range strings.SplitSeq(stdoutLogs, "\n") {
 		if strings.HasPrefix(line, "PIN: ") {
 			secret = line[len("PIN: "):]
 			break
