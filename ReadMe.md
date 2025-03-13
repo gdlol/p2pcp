@@ -1,5 +1,15 @@
 # `p2pcp` - Peer to Peer Copy
 
+[CI Badge]: https://img.shields.io/github/actions/workflow/status/gdlol/p2pcp/.github%2Fworkflows%2Fmain.yml
+[CI URL]: https://github.com/gdlol/p2pcp/actions/workflows/main.yml
+[Codecov Badge]: https://img.shields.io/codecov/c/github/gdlol/p2pcp
+[Codecov URL]: https://codecov.io/gh/gdlol/p2pcp
+[License Badge]: https://img.shields.io/github/license/gdlol/p2pcp
+
+[![CI Badge][CI Badge]][CI URL]
+[![Codecov Badge][Codecov Badge]][Codecov URL]
+[![License Badge][License Badge]](LICENSE)
+
 Simple & Secure command line peer-to-peer data transfer tool based on
 [libp2p](https://github.com/libp2p/go-libp2p), with peer discovery through DHT/mDNS,
 NAT traversal, and no setup.
