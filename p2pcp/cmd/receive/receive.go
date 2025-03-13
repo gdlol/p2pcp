@@ -11,10 +11,10 @@ import (
 )
 
 var ReceiveCmd = &cobra.Command{
-	Use:   "receive id secret [path]",
+	Use:   "receive id [path]",
 	Short: "Receives file/directory from remote peer to specified directory",
 	Args: func(cmd *cobra.Command, args []string) error {
-		if err := cobra.RangeArgs(2, 3)(cmd, args); err != nil {
+		if err := cobra.RangeArgs(1, 2)(cmd, args); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			fmt.Println()
 			cmd.Usage()
@@ -30,20 +30,15 @@ var ReceiveCmd = &cobra.Command{
 			return fmt.Errorf("id: must be at least 7 characters long")
 		}
 
-		secret := args[1]
-		if len(secret) < 6 {
-			return fmt.Errorf("pin/token: must be at least 6 characters long")
-		}
-
 		var path string
 		var err error
-		if len(args) == 2 {
+		if len(args) == 1 {
 			path, err = os.Getwd()
 			if err != nil {
 				return fmt.Errorf("error getting current working directory: %w", err)
 			}
 		} else {
-			path, err = filepath.Abs(args[2])
+			path, err = filepath.Abs(args[1])
 			if err != nil {
 				return fmt.Errorf("error getting absolute path: %w", err)
 			}
@@ -54,6 +49,13 @@ var ReceiveCmd = &cobra.Command{
 		}
 		if !info.IsDir() {
 			return fmt.Errorf("path: %s is not a directory", path)
+		}
+
+		fmt.Printf("Enter PIN/token: ")
+		var secret string
+		fmt.Scanln(&secret)
+		if len(secret) < 6 {
+			return fmt.Errorf("PIN/token: must be at least 6 characters long")
 		}
 
 		private, _ := cmd.Flags().GetBool("private")

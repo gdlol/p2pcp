@@ -46,4 +46,5 @@ func init() {
 
 	RootCmd.AddCommand(send.SendCmd)
 	RootCmd.AddCommand(receive.ReceiveCmd)
+	os.Setenv("QUIC_GO_DISABLE_RECEIVE_BUFFER_WARNING", "true")
 }

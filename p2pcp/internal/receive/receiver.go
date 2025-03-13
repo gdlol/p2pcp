@@ -15,23 +15,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/p2p/discovery/backoff"
 )
 
 type Receiver interface {
-	GetNode() node.Node
 	FindPeer(ctx context.Context, id string) (peer.ID, error)
 	Receive(ctx context.Context, sender peer.ID, secretHash []byte, basePath string) error
 }
 
 type receiver struct {
 	node node.Node
-}
-
-func (r *receiver) GetNode() node.Node {
-	return r.node
 }
 
 func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
@@ -74,7 +70,7 @@ func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
 				sender = validPeers[0].ID
 				slog.Info("Found sender.", "sender", sender)
 				// Mark sender as candidate for DHT routing.
-				r.node.GetHost().Peerstore().Put(sender, node.PeerRoutingTag, struct{}{})
+				r.node.GetHost().Peerstore().Put(sender, node.DhtRoutingTag, struct{}{})
 				break
 			} else if len(validPeers) > 1 {
 				slog.Warn("Found multiple peers advertising topic.", "topic", id, "peers", validPeers)
@@ -85,14 +81,11 @@ func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
 	return sender, nil
 }
 
-func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byte, basePath string) (err error) {
-	n := r.node
-	host := n.GetHost()
-
+func connectToSender(ctx context.Context, host host.Host, peerID peer.ID) error {
 	for ctx.Err() == nil {
-		slog.Debug("Connecting to sender...", "sender", sender)
-		addrs := host.Peerstore().Addrs(sender)
-		err := host.Connect(ctx, peer.AddrInfo{ID: sender, Addrs: addrs})
+		slog.Debug("Connecting to sender...", "sender", peerID)
+		addrs := host.Peerstore().Addrs(peerID)
+		err := host.Connect(ctx, peer.AddrInfo{ID: peerID, Addrs: addrs})
 		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
@@ -101,33 +94,43 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 			time.Sleep(time.Second)
 			continue
 		}
-		slog.Info("Connected to sender.", "sender", sender)
-		host.ConnManager().Protect(sender, "sender")
+		slog.Info("Connected to sender.", "sender", peerID)
+		host.ConnManager().Protect(peerID, "sender")
 		break
 	}
+	return ctx.Err()
+}
 
-	backoffStrategy := backoff.NewExponentialBackoff(
+func getStream(ctx context.Context, host host.Host, peerID peer.ID, protocol protocol.ID) (io.ReadWriteCloser, error) {
+	b := backoff.NewExponentialBackoff(
 		0, 3*time.Second, backoff.FullJitter,
 		100*time.Millisecond, math.Sqrt2, 0,
-		rand.NewSource(0))
-	getStream := func(protocol protocol.ID) (io.ReadWriteCloser, error) {
-		b := backoffStrategy()
-		for ctx.Err() == nil {
-			stream, err := host.NewStream(ctx, sender, protocol)
-			if err != nil {
-				if ctx.Err() != nil {
-					return nil, ctx.Err()
-				}
-				slog.Debug("Error creating stream", "error", err)
-				time.Sleep(b.Delay())
-				continue
+		rand.NewSource(0))()
+	for ctx.Err() == nil {
+		stream, err := host.NewStream(ctx, peerID, protocol)
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
 			}
-			return stream, nil
+			slog.Debug("Error creating stream", "error", err)
+			time.Sleep(b.Delay())
+			continue
 		}
-		return nil, ctx.Err()
+		return stream, nil
+	}
+	return nil, ctx.Err()
+}
+
+func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byte, basePath string) (err error) {
+	n := r.node
+	host := n.GetHost()
+
+	err = connectToSender(ctx, host, sender)
+	if err != nil {
+		return err
 	}
 
-	authStream, err := getStream(auth.Protocol)
+	authStream, err := getStream(ctx, host, sender, auth.Protocol)
 	if err != nil {
 		return fmt.Errorf("error creating auth stream: %w", err)
 	} else {
@@ -159,7 +162,7 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 			<-ctx.Done()
 			return nil, ctx.Err()
 		} else {
-			return getStream(transfer.Protocol)
+			return getStream(ctx, host, sender, transfer.Protocol)
 		}
 	})
 	defer func() {

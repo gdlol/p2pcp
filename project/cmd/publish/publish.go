@@ -1,10 +1,12 @@
 package publish
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
 	"project/cmd/build"
+	"project/pkg/project"
 	"project/pkg/workspace"
 	"strings"
 
@@ -19,7 +21,10 @@ func Run() error {
 	token := os.Getenv("CR_PAT")
 
 	tags := []string{version}
-	if semver.IsValid(version) {
+	if semver.IsValid("v" + version) {
+		if version != project.Version {
+			return fmt.Errorf("version mismatch: project.Version=%s CR_VERSION=%s", project.Version, version)
+		}
 		tags = append(tags, "latest")
 	}
 

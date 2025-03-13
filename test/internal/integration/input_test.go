@@ -46,6 +46,7 @@ func runCommand(ctx context.Context, args ...string) (rm func()) {
 			"--entrypoint", "/p2pcp",
 			"--volume", "coverage:/coverage",
 			"--env", "GOCOVERDIR=/coverage",
+			"--env", fmt.Sprintf("RECEIVER_SECRET=%s", os.Getenv("RECEIVER_SECRET")),
 			"local/test"},
 			args...)...)
 	}()
@@ -61,12 +62,15 @@ func TestSenderArgs(t *testing.T) {
 		docker.AssertContainerLogContains(ctx, project.Name, "Usage:")
 	}()
 
+}
+
+func TestReceiverArgs(t *testing.T) {
+	ctx := t.Context()
+
 	for _, args := range [][]string{
 		{"receive"},
-		{"receive", "a"},
-		{"receive", "a", "b", "c", "d"},
+		{"receive", "a", "b", "c"},
 	} {
-
 		func() {
 			rm := runCommand(ctx, args...)
 			defer rm()
@@ -75,14 +79,16 @@ func TestSenderArgs(t *testing.T) {
 	}
 
 	func() {
-		rm := runCommand(ctx, "receive", "short", "123456")
+		rm := runCommand(ctx, "receive", "short")
 		defer rm()
 		docker.AssertContainerLogContains(ctx, project.Name, "id: must be at least 7 characters long")
 	}()
 
 	func() {
-		rm := runCommand(ctx, "receive", "abcdefg", "12345")
+		restore := workspace.SetEnv("RECEIVER_SECRET", "12345")
+		defer restore()
+		rm := runCommand(ctx, "receive", "abcdefg")
 		defer rm()
-		docker.AssertContainerLogContains(ctx, project.Name, "pin/token: must be at least 6 characters long")
+		docker.AssertContainerLogContains(ctx, project.Name, "PIN/token: must be at least 6 characters long")
 	}()
 }
