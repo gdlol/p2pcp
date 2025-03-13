@@ -90,7 +90,7 @@ func readTar(r io.Reader, basePath string) error {
 		}
 
 		// Handle symbolic links.
-		if header.Typeflag&tar.TypeSymlink == tar.TypeSymlink {
+		if header.Typeflag == tar.TypeSymlink {
 			linkName := filepath.Clean(header.Linkname)
 			if filepath.IsAbs(linkName) {
 				return fmt.Errorf("absolute symbolic link in archive: %s -> %s", header.Name, header.Linkname)
@@ -104,7 +104,7 @@ func readTar(r io.Reader, basePath string) error {
 		}
 
 		// Handle directories.
-		if header.Typeflag&tar.TypeDir == tar.TypeDir {
+		if header.Typeflag == tar.TypeDir {
 			err = readDir(header, path)
 			if err != nil {
 				return err
@@ -113,7 +113,7 @@ func readTar(r io.Reader, basePath string) error {
 		}
 
 		// Handle regular files.
-		if header.Typeflag&tar.TypeReg == tar.TypeReg {
+		if header.Typeflag == tar.TypeReg {
 			err = readFile(header, reader, path)
 			if err != nil {
 				return err

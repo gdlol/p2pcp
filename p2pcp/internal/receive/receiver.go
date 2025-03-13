@@ -121,16 +121,8 @@ func getStream(ctx context.Context, host host.Host, peerID peer.ID, protocol pro
 	return nil, ctx.Err()
 }
 
-func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byte, basePath string) (err error) {
-	n := r.node
-	host := n.GetHost()
-
-	err = connectToSender(ctx, host, sender)
-	if err != nil {
-		return err
-	}
-
-	authStream, err := getStream(ctx, host, sender, auth.Protocol)
+func authenticate(ctx context.Context, host host.Host, peerID peer.ID, secretHash []byte) error {
+	authStream, err := getStream(ctx, host, peerID, auth.Protocol)
 	if err != nil {
 		return fmt.Errorf("error creating auth stream: %w", err)
 	} else {
@@ -141,7 +133,22 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 		if !success {
 			return fmt.Errorf("authentication failed")
 		}
-		slog.Info("Authenticated.")
+		return err
+	}
+}
+
+func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byte, basePath string) (err error) {
+	n := r.node
+	host := n.GetHost()
+
+	err = connectToSender(ctx, host, sender)
+	if err != nil {
+		return err
+	}
+
+	err = authenticate(ctx, host, sender, secretHash)
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithCancel(ctx)

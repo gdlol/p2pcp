@@ -1,6 +1,7 @@
 package transfer
 
 import (
+	"archive/tar"
 	"fmt"
 	"io"
 	"net"
@@ -140,4 +141,166 @@ func testReadWrite(t *testing.T, read readFunc, write writeFunc) {
  */
 func TestTarReadWrite(t *testing.T) {
 	testReadWrite(t, readTar, writeTar)
+}
+
+func TestInvalidTars(t *testing.T) {
+	tempPath := filepath.Join(os.TempDir(), project.Name, "test", "invalid_tar")
+	workspace.ResetDir(tempPath)
+	outputPath := filepath.Join(tempPath, "output")
+	workspace.ResetDir(outputPath)
+
+	fileInfo, err := os.Stat(filepath.Join(workspace.GetProjectPath(), "package.json"))
+	require.NoError(t, err)
+	tarHeader, err := tar.FileInfoHeader(fileInfo, "")
+	require.NoError(t, err)
+
+	// Tar with absolute path
+	absPathTar := func() string {
+		filePath := filepath.Join(tempPath, "absolute_path.tar")
+		file, err := os.Create(filePath)
+		require.NoError(t, err)
+		defer file.Close()
+
+		writer := tar.NewWriter(file)
+		defer writer.Close()
+
+		tarHeader.Name = "/package.json"
+		tarHeader.Size = 0
+		err = writer.WriteHeader(tarHeader)
+		require.NoError(t, err)
+
+		return filePath
+	}()
+
+	func() {
+		reader, err := os.Open(absPathTar)
+		require.NoError(t, err)
+		defer reader.Close()
+
+		err = readTar(reader, outputPath)
+		assert.Error(t, err)
+		assert.Equal(t, err.Error(), "absolute path in archive: /package.json")
+	}()
+
+	// Tar with invalid path
+	invalidPathTar := func() string {
+		filePath := filepath.Join(tempPath, "absolute_path.tar")
+		file, err := os.Create(filePath)
+		require.NoError(t, err)
+		defer file.Close()
+
+		writer := tar.NewWriter(file)
+		defer writer.Close()
+
+		tarHeader.Name = "../../package.json"
+		tarHeader.Size = 0
+		err = writer.WriteHeader(tarHeader)
+		require.NoError(t, err)
+
+		return filePath
+	}()
+
+	func() {
+		reader, err := os.Open(invalidPathTar)
+		require.NoError(t, err)
+		defer reader.Close()
+
+		err = readTar(reader, outputPath)
+		assert.Error(t, err)
+		assert.Equal(t, err.Error(), "invalid path in archive: ../../package.json")
+	}()
+
+	// Tar with absolute symlink
+	absSymlinkTar := func() string {
+		filePath := filepath.Join(tempPath, "absolute_symlink.tar")
+		file, err := os.Create(filePath)
+		require.NoError(t, err)
+		defer file.Close()
+
+		symlinkPath := filepath.Join(tempPath, "abs_symlink")
+		os.Symlink("/package.json", filepath.Join(tempPath, "abs_symlink"))
+		fileInfo, err := os.Lstat(symlinkPath)
+		require.NoError(t, err)
+
+		writer := tar.NewWriter(file)
+		defer writer.Close()
+
+		tarHeader, err := tar.FileInfoHeader(fileInfo, "/package.json")
+		require.NoError(t, err)
+		err = writer.WriteHeader(tarHeader)
+		require.NoError(t, err)
+
+		return filePath
+	}()
+
+	func() {
+		reader, err := os.Open(absSymlinkTar)
+		require.NoError(t, err)
+		defer reader.Close()
+
+		err = readTar(reader, outputPath)
+		assert.Error(t, err)
+		assert.Equal(t, err.Error(), "absolute symbolic link in archive: abs_symlink -> /package.json")
+	}()
+
+	// Tar with invalid symlink
+	invalidSymlinkTar := func() string {
+		filePath := filepath.Join(tempPath, "absolute_symlink.tar")
+		file, err := os.Create(filePath)
+		require.NoError(t, err)
+		defer file.Close()
+
+		symlinkPath := filepath.Join(tempPath, "invalid_symlink")
+		os.Symlink("/package.json", filepath.Join(tempPath, "invalid_symlink"))
+		fileInfo, err := os.Lstat(symlinkPath)
+		require.NoError(t, err)
+
+		writer := tar.NewWriter(file)
+		defer writer.Close()
+
+		tarHeader, err := tar.FileInfoHeader(fileInfo, "../../../package.json")
+		require.NoError(t, err)
+		err = writer.WriteHeader(tarHeader)
+		require.NoError(t, err)
+
+		return filePath
+	}()
+
+	func() {
+		reader, err := os.Open(invalidSymlinkTar)
+		require.NoError(t, err)
+		defer reader.Close()
+
+		err = readTar(reader, outputPath)
+		assert.Error(t, err)
+		assert.Equal(t, err.Error(), "invalid symbolic link in archive: invalid_symlink -> ../../../package.json")
+	}()
+
+	invalidFileTypeTar := func() string {
+		filePath := filepath.Join(tempPath, "invalid_file_type.tar")
+		file, err := os.Create(filePath)
+		require.NoError(t, err)
+		defer file.Close()
+
+		writer := tar.NewWriter(file)
+		defer writer.Close()
+
+		// spell-checker: ignore Typeflag
+		tarHeader.Name = "package.json"
+		tarHeader.Typeflag |= tar.TypeChar
+		err = writer.WriteHeader(tarHeader)
+		require.NoError(t, err)
+
+		return filePath
+	}()
+
+	func() {
+		reader, err := os.Open(invalidFileTypeTar)
+		require.NoError(t, err)
+		defer reader.Close()
+
+		err = readTar(reader, filepath.Join(tempPath, "output"))
+		assert.Error(t, err)
+		assert.Equal(t, err.Error(), "unsupported file type for entry package.json")
+	}()
 }
