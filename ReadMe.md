@@ -40,7 +40,8 @@ Node ID: 5TPXvuyV78S4dnnoUzsVv1Tb3fEXmQpL2E6juf2P9Em9
 +-----------------+
 Please run the following command on the receiver's side:
 
-p2pcp receive f2P9Em9 900137
+p2pcp receive f2P9Em9
+PIN: 654028
 
 Sending...
 Done.
@@ -49,7 +50,8 @@ Done.
 Receive:
 
 ```
-> p2pcp receive f2P9Em9 900137
+> p2pcp receive f2P9Em9
+Enter PIN/token: 900137
 Sender ID: 5TPXvuyV78S4dnnoUzsVv1Tb3fEXmQpL2E6juf2P9Em9
 Please verify that the following random art matches the one displayed on the sender's side.
 +-----------------+
@@ -172,9 +174,9 @@ breaking the public key algorithm or generating a collision to a cryptographic h
 
 `secret` will be a random string with at least `128` bits of entropy.
 
-In strict mode, the `p2pcp receive` command becomes non-interactive (no need to confirm the Random Art).
+In strict mode, authentication becomes non-interactive (no need to confirm the Random Art).
 
-On the downside, the `p2pcp receive` command generated is much longer and less feasible to be manually typed.
+On the downside, `id` and `secret` are much longer and less feasible for manual typing.
 
 ## Features
 

@@ -31,13 +31,6 @@ func Send(ctx context.Context, path string, strict bool, private bool) error {
 		return fmt.Errorf("error starting mDNS service: %w", err)
 	}
 
-	var secret string
-	if !strict {
-		secret = auth.GetOneTimeSecret()
-	} else {
-		secret = auth.GetStrongSecret()
-	}
-
 	if !strict {
 		fmt.Println("Node ID:", n.ID())
 		room := drunkenbishop.FromBytes(n.ID().Bytes())
@@ -53,9 +46,18 @@ func Send(ctx context.Context, path string, strict bool, private bool) error {
 	fmt.Println("Please run the following command on the receiver's side:")
 	fmt.Println()
 	if private {
-		fmt.Println(project.Name, "receive", id, secret, "--private")
+		fmt.Println(project.Name, "receive", id, "--private")
 	} else {
-		fmt.Println(project.Name, "receive", id, secret)
+		fmt.Println(project.Name, "receive", id)
+	}
+
+	var secret string
+	if !strict {
+		secret = auth.GetOneTimeSecret()
+		fmt.Printf("PIN: %s\n", secret)
+	} else {
+		secret = auth.GetStrongSecret()
+		fmt.Printf("token: %s\n", secret)
 	}
 	fmt.Println()
 

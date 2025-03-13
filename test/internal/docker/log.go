@@ -86,7 +86,7 @@ func WaitForContainerLog(ctx context.Context, containerName string, timeout time
 	}
 }
 
-func getContainerLogs(ctx context.Context, containerName string) (stdout string, stderr string, err error) {
+func GetContainerLogs(ctx context.Context, containerName string) (stdout string, stderr string, err error) {
 	cli, err := getClient()
 	if err != nil {
 		return stdout, stderr, err
@@ -113,7 +113,7 @@ func getContainerLogs(ctx context.Context, containerName string) (stdout string,
 }
 
 func AssertContainerLogContains(ctx context.Context, containerName string, substrings ...string) {
-	stdout, stderr, err := getContainerLogs(ctx, containerName)
+	stdout, stderr, err := GetContainerLogs(ctx, containerName)
 	workspace.Check(err)
 
 	stdoutLines := strings.Split(stdout, "\n")
@@ -140,7 +140,7 @@ func AssertContainerLogContains(ctx context.Context, containerName string, subst
 }
 
 func AssertContainerLogNotContains(ctx context.Context, containerName string, substrings ...string) {
-	stdout, stderr, err := getContainerLogs(ctx, containerName)
+	stdout, stderr, err := GetContainerLogs(ctx, containerName)
 	workspace.Check(err)
 
 	stdoutLines := strings.Split(stdout, "\n")

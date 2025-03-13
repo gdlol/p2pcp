@@ -50,9 +50,9 @@ func TestSendErrorRetry(t *testing.T) {
 	h2, err := net.GenPeer()
 	require.NoError(t, err)
 
-	handled := false
+	handled := make(chan struct{})
 	registerErrorHandler(h2, h1.ID(), func(errStr string) {
-		handled = true
+		handled <- struct{}{}
 	})
 
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
@@ -70,7 +70,13 @@ func TestSendErrorRetry(t *testing.T) {
 	case err := <-errChan:
 		assert.NoError(t, err)
 		assert.NoError(t, ctx.Err())
-		assert.True(t, handled)
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+		defer cancel()
+		select {
+		case <-handled:
+		case <-ctx.Done():
+			t.Fatal(ctx.Err())
+		}
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}

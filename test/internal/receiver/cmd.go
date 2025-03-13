@@ -13,22 +13,38 @@ import (
 	"time"
 )
 
-func Run(ctx context.Context, receiverDir string, stdin string, targetPath string, secret string) error {
+func Run(ctx context.Context, receiverDir string, stdin string, targetPath string, overrideSecret string) error {
 	line, err := docker.WaitForContainerLog(ctx, "sender", time.Minute, "p2pcp receive")
 	if err != nil {
 		return err
 	}
 	slog.Info(fmt.Sprintf("Received command: %s", line))
+	stdoutLogs, _, err := docker.GetContainerLogs(ctx, "sender")
+	workspace.Check(err)
+	var secret string
+	for _, line := range strings.Split(stdoutLogs, "\n") {
+		if strings.HasPrefix(line, "PIN: ") {
+			secret = line[len("PIN: "):]
+			break
+		}
+		if strings.HasPrefix(line, "token: ") {
+			secret = line[len("token: "):]
+			break
+		}
+	}
+	if len(secret) == 0 {
+		return fmt.Errorf("secret not found in logs")
+	}
+	if len(overrideSecret) > 0 {
+		secret = overrideSecret
+	}
 
 	cmd := strings.Split(line, " ")
-	if len(cmd) < 4 {
+	if len(cmd) < 3 {
 		return fmt.Errorf("invalid command: %s", line)
 	}
 
 	args := append(cmd[1:], "--debug")
-	if len(secret) > 0 {
-		args[2] = secret
-	}
 	if len(targetPath) > 0 {
 		args = append(args, targetPath)
 	}
@@ -58,14 +74,15 @@ func Run(ctx context.Context, receiverDir string, stdin string, targetPath strin
 		}
 	}()
 
+	_, err = stdinPipe.Write([]byte(secret + "\n"))
+	workspace.Check(err)
+
 	// Confirmation of sender ID.
-	go func() {
-		if len(stdin) > 0 {
-			_, err := stdinPipe.Write([]byte(stdin))
-			workspace.Check(err)
-		}
-		workspace.Check(stdinPipe.Close())
-	}()
+	if len(stdin) > 0 {
+		_, err := stdinPipe.Write([]byte(stdin))
+		workspace.Check(err)
+	}
+	workspace.Check(stdinPipe.Close())
 
 	return c.Wait()
 }
