@@ -2,6 +2,7 @@ package receive
 
 import (
 	"context"
+	"p2pcp/internal/auth"
 	"testing"
 	"time"
 
@@ -146,4 +147,48 @@ func TestGetStreamRetry(t *testing.T) {
 	err = <-connect
 	assert.NoError(t, err)
 	assert.True(t, newStream)
+}
+
+func TestAuthenticateTimeout(t *testing.T) {
+	t.Parallel()
+
+	net := mocknet.New()
+	defer net.Close()
+
+	h1, err := net.GenPeer()
+	require.NoError(t, err)
+	h2, err := net.GenPeer()
+	require.NoError(t, err)
+	_, err = net.LinkPeers(h1.ID(), h2.ID())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err = authenticate(ctx, h1, h2.ID(), []byte("test"))
+	assert.Error(t, err)
+	assert.Error(t, ctx.Err())
+	assert.Equal(t, context.DeadlineExceeded, ctx.Err())
+}
+
+func TestAuthenticateDisconnect(t *testing.T) {
+	t.Parallel()
+
+	net := mocknet.New()
+	defer net.Close()
+
+	h1, err := net.GenPeer()
+	require.NoError(t, err)
+	h2, err := net.GenPeer()
+	require.NoError(t, err)
+	_, err = net.LinkPeers(h1.ID(), h2.ID())
+	require.NoError(t, err)
+
+	h2.SetStreamHandler(auth.Protocol, func(stream network.Stream) {
+		stream.Close()
+	})
+
+	err = authenticate(t.Context(), h1, h2.ID(), []byte("test"))
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "authentication failed")
 }
