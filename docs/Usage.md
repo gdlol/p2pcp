@@ -43,7 +43,7 @@ Global Flags:
 Receives file/directory from remote peer to specified directory
 
 Usage:
-  p2pcp receive id secret [path] [flags]
+  p2pcp receive id [path] [flags]
 
 Global Flags:
   -d, --debug     show debug logs
