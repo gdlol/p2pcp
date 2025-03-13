@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
@@ -22,7 +23,7 @@ import (
 type Sender interface {
 	GetNode() node.Node
 	GetAdvertiseTopic() string
-	WaitForReceiver(ctx context.Context, secretHash []byte, path string) (peer.ID, error)
+	WaitForReceiver(ctx context.Context, secretHash []byte) (peer.ID, error)
 	Send(ctx context.Context, receiver peer.ID, path string) error
 	Close()
 }
@@ -49,10 +50,7 @@ func (s *sender) Close() {
 	s.node.Close()
 }
 
-func (s *sender) WaitForReceiver(ctx context.Context, secretHash []byte, path string) (peer.ID, error) {
-	n := s.node
-	host := n.GetHost()
-
+func authenticateReceiver(ctx context.Context, host host.Host, secretHash []byte, strict bool) (peer.ID, error) {
 	var authenticatedPeer peer.ID = ""
 	authenticate := make(chan peer.ID, 1)
 	host.SetStreamHandler(auth.Protocol, func(stream network.Stream) {
@@ -72,12 +70,12 @@ func (s *sender) WaitForReceiver(ctx context.Context, secretHash []byte, path st
 					case authenticate <- remotePeer:
 						host.ConnManager().Protect(remotePeer, "receiver")
 						// Mark receiver as candidate for DHT routing.
-						host.Peerstore().Put(remotePeer, node.PeerRoutingTag, struct{}{})
+						host.Peerstore().Put(remotePeer, node.DhtRoutingTag, struct{}{})
 					default:
 					}
 				}
 			} else {
-				if !s.strictMode {
+				if !strict {
 					select {
 					case authenticate <- "": // Causes abort if not in strict mode.
 					default:
@@ -103,6 +101,32 @@ func (s *sender) WaitForReceiver(ctx context.Context, secretHash []byte, path st
 	}
 }
 
+func (s *sender) WaitForReceiver(ctx context.Context, secretHash []byte) (peer.ID, error) {
+	return authenticateReceiver(ctx, s.node.GetHost(), secretHash, s.strictMode)
+}
+
+func getAuthorizedStreams(ctx context.Context, host host.Host, receiver peer.ID) (chan io.ReadWriteCloser, func()) {
+	streams := make(chan io.ReadWriteCloser, 1)
+	cancel := func() {
+		host.RemoveStreamHandler(transfer.Protocol)
+	}
+	host.SetStreamHandler(transfer.Protocol, func(stream network.Stream) {
+		slog.Debug("Received new transfer stream.")
+		remotePeer := stream.Conn().RemotePeer()
+		if receiver != remotePeer {
+			slog.Warn("Unauthorized transfer stream.")
+			stream.Close()
+		} else {
+			select {
+			case streams <- stream:
+			case <-ctx.Done():
+				stream.Close()
+			}
+		}
+	})
+	return streams, cancel
+}
+
 func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) (err error) {
 	n := s.node
 	host := n.GetHost()
@@ -113,14 +137,13 @@ func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) (err e
 		slog.Error("Receiver error", "error", errStr)
 		cancel()
 	})
-	canceling := false
+	streams, cancelStreams := getAuthorizedStreams(ctx, host, receiver)
 	interrupt.RegisterInterruptHandler(ctx, func() {
-		canceling = true
+		cancelStreams()
 		n.SendError(ctx, receiver, "Transfer canceled.")
 		cancel()
 	})
 
-	streams := make(chan io.ReadWriteCloser, 1)
 	writer := channel.NewChannelWriter(ctx, func(ctx context.Context) (io.ReadWriteCloser, error) {
 		select {
 		case stream := <-streams:
@@ -134,26 +157,6 @@ func (s *sender) Send(ctx context.Context, receiver peer.ID, path string) (err e
 			slog.Debug("Error closing channel.", "error", err)
 		}
 	}()
-	host.SetStreamHandler(transfer.Protocol, func(stream network.Stream) {
-		slog.Debug("Received new transfer stream.")
-		remotePeer := stream.Conn().RemotePeer()
-		if receiver != remotePeer {
-			slog.Warn("Unauthorized transfer stream.")
-			stream.Close()
-		} else {
-			if canceling {
-				host.RemoveStreamHandler(transfer.Protocol)
-				stream.Close()
-				return
-			}
-			select {
-			case streams <- stream:
-			case <-ctx.Done():
-				stream.Close()
-			}
-		}
-	})
-	defer host.RemoveStreamHandler(transfer.Protocol)
 
 	err = transfer.WriteZip(writer, path)
 	if err == nil {

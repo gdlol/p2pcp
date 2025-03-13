@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
@@ -15,11 +14,11 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/discovery/backoff"
 )
 
-const PeerRoutingTag = "p2pcp/peer-routing"
+const DhtRoutingTag = "p2pcp/peer-routing"
 
 type dhtRouting struct {
 	host host.Host
-	dht  *dual.DHT
+	dht  routing.PeerRouting
 }
 
 func (d *dhtRouting) FindPeer(ctx context.Context, id peer.ID) (peer.AddrInfo, error) {
@@ -27,10 +26,10 @@ func (d *dhtRouting) FindPeer(ctx context.Context, id peer.ID) (peer.AddrInfo, e
 		slog.Warn("dhtRouting: DHT not initialized.")
 		return peer.AddrInfo{ID: id}, nil
 	} else {
-		_, err := d.host.Peerstore().Get(id, PeerRoutingTag)
+		_, err := d.host.Peerstore().Get(id, DhtRoutingTag)
 		if err != nil {
 			if err != peerstore.ErrNotFound {
-				slog.Warn("dhtRouting: Error getting PeerRoutingTag for peer.", "peer", id, "error", err)
+				slog.Warn("dhtRouting: Error getting DhtRoutingTag for peer.", "peer", id, "error", err)
 			}
 			return peer.AddrInfo{ID: id}, err
 		}

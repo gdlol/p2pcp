@@ -81,6 +81,15 @@ docker run --rm \
 chmod +x p2pcp
 ```
 
+For PowerShell:
+
+```ps1
+docker run --rm `
+    ghcr.io/regclient/regctl image get-file `
+    ghcr.io/gdlol/p2pcp `
+    --platform windows/amd64 /p2pcp.exe > p2pcp.exe
+```
+
 The list of published platforms can be found at [ghcr.io/gdlol/p2pcp](https://ghcr.io/gdlol/p2pcp).
 
 ### Docker Image
@@ -90,7 +99,7 @@ You can also use the Docker image directly without installing the binary:
 ```sh
 alias p2pcp='docker run --rm -it \
     --network host \
-    -u "$(id -u):$(id -g)" \
+    -u $(id -u):$(id -g) \
     -v ${PWD}:/data \
     ghcr.io/gdlol/p2pcp'
 ```
@@ -98,7 +107,12 @@ alias p2pcp='docker run --rm -it \
 For PowerShell:
 
 ```ps1
-function p2pcp { docker run --rm -it --network host -v ${PWD}:/data ghcr.io/gdlol/p2pcp @args }
+function p2pcp {
+    docker run --rm -it `
+    --network host `
+    -v ${PWD}:/data `
+    ghcr.io/gdlol/p2pcp @args
+}
 ```
 
 ## Usage

@@ -60,7 +60,7 @@ func Send(ctx context.Context, path string, strict bool, private bool) error {
 	fmt.Println()
 
 	secretHash := auth.ComputeHash([]byte(secret))
-	receiver, err := sender.WaitForReceiver(ctx, secretHash, path)
+	receiver, err := sender.WaitForReceiver(ctx, secretHash)
 	if err != nil {
 		return fmt.Errorf("error waiting for receiver: %w", err)
 	}
