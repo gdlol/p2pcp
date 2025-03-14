@@ -51,7 +51,7 @@ Node ID: 5TPXvuyV78S4dnnoUzsVv1Tb3fEXmQpL2E6juf2P9Em9
 Please run the following command on the receiver's side:
 
 p2pcp receive f2P9Em9
-PIN: 654028
+PIN: 900137
 
 Sending...
 Done.
