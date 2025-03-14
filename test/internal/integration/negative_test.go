@@ -62,7 +62,7 @@ func TestPrivateNetwork_SenderNonExistPath(t *testing.T) {
 	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
 	runTestNegative(ctx, composeFilePath, func() {
 		docker.WaitContainer(ctx, "sender")
-		docker.AssertContainerLogContains(ctx, "sender", "path: path /data/file does not exist")
+		docker.AssertContainerLogContains(ctx, "sender", "no such file or directory")
 		docker.AssertContainerLogNotContains(ctx, "receiver", "Done.", receiverConfirmMessage)
 		docker.AssertContainerLogNotContains(ctx, "sender", "Done.", "Sending...")
 	})
@@ -79,7 +79,7 @@ func TestPrivateNetwork_ReceiverNonExistDir(t *testing.T) {
 	composeFilePath := filepath.Join(getTestDataPath(), "private_network/compose.yaml")
 	runTestNegative(ctx, composeFilePath, func() {
 		docker.WaitContainer(ctx, "receiver")
-		docker.AssertContainerLogContains(ctx, "receiver", "path: directory /data/test1/test2 does not exist")
+		docker.AssertContainerLogContains(ctx, "receiver", "no such file or directory")
 		docker.AssertContainerLogNotContains(ctx, "receiver", "Done.", receiverConfirmMessage)
 		docker.AssertContainerLogNotContains(ctx, "sender", "Receiver ID:", "Sending...")
 	})
@@ -220,7 +220,7 @@ func TestRelayNetwork_SenderCancel(t *testing.T) {
 
 	composeFilePath := filepath.Join(getTestDataPath(), "relay_network/compose.yaml")
 	runTestNegative(ctx, composeFilePath, func() {
-		_, err := docker.WaitForContainerLog(ctx, "receiver", 3*time.Minute, "Connected to WAN.")
+		_, err := docker.WaitForContainerLog(ctx, "receiver", 3*time.Minute, "Connected to sender.")
 		workspace.Check(err)
 		_, err = docker.WaitForContainerLog(ctx, "receiver", time.Minute, "large_file")
 		workspace.Check(err)
@@ -249,7 +249,7 @@ func TestRelayNetwork_ReceiverCancel(t *testing.T) {
 
 	composeFilePath := filepath.Join(getTestDataPath(), "relay_network/compose.yaml")
 	runTestNegative(ctx, composeFilePath, func() {
-		_, err := docker.WaitForContainerLog(ctx, "receiver", 3*time.Minute, "Connected to WAN.")
+		_, err := docker.WaitForContainerLog(ctx, "receiver", 3*time.Minute, "Connected to sender.")
 		workspace.Check(err)
 		_, err = docker.WaitForContainerLog(ctx, "receiver", time.Minute, "large_file")
 		workspace.Check(err)

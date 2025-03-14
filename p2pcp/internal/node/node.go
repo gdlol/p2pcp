@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"io"
 	"log/slog"
 	mathRand "math/rand"
 	"p2pcp/internal/auth"
+	"p2pcp/internal/errors"
 	"project/pkg/project"
 	"slices"
 	"time"
@@ -34,10 +34,8 @@ type NodeID interface {
 type Node interface {
 	ID() NodeID
 	GetHost() host.Host
-	IsPrivateMode() bool
-	StartMdns() error
+	StartMdns()
 	AdvertiseLAN(ctx context.Context, topic string) error
-	WaitForWAN(ctx context.Context) error
 	AdvertiseWAN(ctx context.Context, topic string) error
 	FindPeers(ctx context.Context, topic string) (<-chan peer.AddrInfo, error)
 	RegisterErrorHandler(peerID peer.ID, handler func(string))
@@ -75,12 +73,9 @@ func (n *node) GetHost() host.Host {
 	return n.host
 }
 
-func (n *node) IsPrivateMode() bool {
-	return n.privateMode
-}
-
-func (n *node) StartMdns() error {
-	return n.mdnsService.Start()
+func (n *node) StartMdns() {
+	err := n.mdnsService.Start()
+	errors.Unexpected(err, "start mDNS")
 }
 
 func (n *node) AdvertiseLAN(ctx context.Context, topic string) error {
@@ -89,27 +84,35 @@ func (n *node) AdvertiseLAN(ctx context.Context, topic string) error {
 	return err
 }
 
-func (n *node) WaitForWAN(ctx context.Context) error {
+func (n *node) waitForWAN(ctx context.Context, continuation func() error) error {
 	for ctx.Err() == nil {
-		if !n.dht.WANActive() {
+		if !n.privateMode && !n.dht.WANActive() {
 			time.Sleep(time.Second)
 			continue
 		} else {
-			break
+			return continuation()
 		}
 	}
 	return ctx.Err()
 }
 
 func (n *node) AdvertiseWAN(ctx context.Context, topic string) error {
-	discovery := routing.NewRoutingDiscovery(n.dht.WAN)
-	_, err := discovery.Advertise(ctx, topic)
-	return err
+	return n.waitForWAN(ctx, func() error {
+		discovery := routing.NewRoutingDiscovery(n.dht.WAN)
+		_, err := discovery.Advertise(ctx, topic)
+		return err
+	})
 }
 
 func (n *node) FindPeers(ctx context.Context, topic string) (<-chan peer.AddrInfo, error) {
-	discovery := routing.NewRoutingDiscovery(n.dht)
-	return discovery.FindPeers(ctx, topic)
+	var peers <-chan peer.AddrInfo
+	var err error
+	err = n.waitForWAN(ctx, func() error {
+		discovery := routing.NewRoutingDiscovery(n.dht)
+		peers, err = discovery.FindPeers(ctx, topic)
+		return err
+	})
+	return peers, err
 }
 
 func findPeersForAutoRelay(ctx context.Context, n node) {
@@ -130,47 +133,38 @@ func findPeersForAutoRelay(ctx context.Context, n node) {
 		b := backoffStrategy()
 		var peers []peer.ID
 		for ctx.Err() == nil {
-			err := n.WaitForWAN(ctx)
-			if err != nil {
-				return
-			}
 			slog.Debug("Getting peers from DHT for auto relay...")
-			peers, err = n.dht.WAN.GetClosestPeers(ctx, rand.Text())
-			if err != nil {
-				if ctx.Err() != nil {
-					return
+			var err error
+			err = n.waitForWAN(ctx, func() error {
+				peers, err = n.dht.WAN.GetClosestPeers(ctx, rand.Text())
+				return err
+			})
+			if err == nil {
+				if len(peers) > 0 {
+					slog.Debug(fmt.Sprintf("Feeding %d peers from DHT for auto relay.", len(peers)))
+					break
+				} else {
+					time.Sleep(b.Delay())
 				}
+			} else if ctx.Err() == nil {
 				slog.Debug("Error getting peers from DHT for auto relay.", "error", err)
-			}
-			if len(peers) > 0 {
-				slog.Debug(fmt.Sprintf("Feeding %d peers from DHT for auto relay.", len(peers)))
-				break
-			} else {
-				time.Sleep(b.Delay())
 			}
 		}
 
-		for _, peerID := range peers {
+		// Feed peers with public addresses to auto relay.
+		for i := 0; ctx.Err() == nil && num > 0 && i < len(peers); i++ {
+			peerID := peers[i]
 			addrs := n.host.Peerstore().Addrs(peerID)
 			addrs = slices.DeleteFunc(addrs, func(addr multiaddr.Multiaddr) bool {
 				return !manet.IsPublicAddr(addr)
 			})
-			if len(addrs) == 0 {
-				continue
-			}
-			addrInfo := peer.AddrInfo{
-				ID:    peerID,
-				Addrs: addrs,
-			}
-			if num > 0 {
-				select {
-				case n.peerSource <- addrInfo:
-					num--
-				case <-ctx.Done():
-					return
+			if len(addrs) >= 0 {
+				addrInfo := peer.AddrInfo{
+					ID:    peerID,
+					Addrs: addrs,
 				}
-			} else {
-				break
+				n.peerSource <- addrInfo
+				num--
 			}
 		}
 	}
@@ -181,10 +175,7 @@ func (n *node) RegisterErrorHandler(peerID peer.ID, handler func(string)) {
 }
 
 func (n *node) SendError(ctx context.Context, peerID peer.ID, errStr string) {
-	err := sendError(ctx, n.host, peerID, errStr)
-	if err != nil {
-		slog.Debug("Error sending error message.", "error", err)
-	}
+	sendError(ctx, n.host, peerID, errStr)
 }
 
 func (n *node) Close() {
@@ -194,27 +185,16 @@ func (n *node) Close() {
 }
 
 // Gets a hashed ID, as peerID.String() may or may not have been hashed.
-func GetNodeID(peerID peer.ID) (NodeID, error) {
+func GetNodeID(peerID peer.ID) NodeID {
 	pubKey, err := peerID.ExtractPublicKey()
-	if err != nil {
-		return nil, fmt.Errorf("error extracting public key: %w", err)
-	}
+	errors.Unexpected(err, "GetNodeID")
 	keyBytes, err := pubKey.Raw()
-	if err != nil {
-		return nil, fmt.Errorf("error getting raw public key: %w", err)
-	}
+	errors.Unexpected(err, "GetNodeID")
 	hashValue := auth.ComputeHash(keyBytes)
-	return &nodeID{value: hashValue}, nil
+	return &nodeID{value: hashValue}
 }
 
-func NewNode(ctx context.Context, privateMode bool, options ...libp2p.Option) (Node, error) {
-	success := false
-	closeIfError := func(closer io.Closer) {
-		if !success {
-			closer.Close()
-		}
-	}
-
+func NewNode(ctx context.Context, privateMode bool, options ...libp2p.Option) Node {
 	peerSource := make(chan peer.AddrInfo)
 	peerSourceLimit := make(chan int, 1)
 	routing := &dhtRouting{}
@@ -230,7 +210,6 @@ func NewNode(ctx context.Context, privateMode bool, options ...libp2p.Option) (N
 					select {
 					case peerSourceLimit <- num:
 					case <-ctx.Done():
-						close(peerSource)
 					}
 					return peerSource
 				},
@@ -243,26 +222,15 @@ func NewNode(ctx context.Context, privateMode bool, options ...libp2p.Option) (N
 	}
 
 	host, err := libp2p.New(options...)
-	if err != nil {
-		return nil, fmt.Errorf("error creating host: %w", err)
-	}
-	defer closeIfError(host)
+	errors.Unexpected(err, "libp2p.New")
 	routing.host = host
 
-	id, err := GetNodeID(host.ID())
-	if err != nil {
-		return nil, fmt.Errorf("error getting node ID: %w", err)
-	}
+	id := GetNodeID(host.ID())
 
-	dht, err := createDHT(ctx, host)
-	if err != nil {
-		return nil, fmt.Errorf("error creating DHT: %w", err)
-	}
-	defer closeIfError(dht)
+	dht := createDHT(ctx, host)
 	routing.dht = dht
 
 	mdnsService := createMdnsService(ctx, host, project.Name)
-	defer closeIfError(mdnsService)
 
 	node := &node{
 		id:              id,
@@ -276,6 +244,5 @@ func NewNode(ctx context.Context, privateMode bool, options ...libp2p.Option) (N
 
 	go findPeersForAutoRelay(ctx, *node)
 
-	success = true
-	return node, nil
+	return node
 }

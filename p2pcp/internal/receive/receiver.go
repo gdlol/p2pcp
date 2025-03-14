@@ -31,20 +31,8 @@ type receiver struct {
 }
 
 func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
-	if !r.node.IsPrivateMode() {
-		slog.Debug("Waiting for WAN connection...")
-		err := r.node.WaitForWAN(ctx)
-		if err != nil {
-			return "", err
-		}
-		slog.Debug("Connected to WAN.")
-	}
-
 	var sender peer.ID
-	for {
-		if ctx.Err() != nil {
-			return "", ctx.Err()
-		}
+	for ctx.Err() == nil {
 		time.Sleep(1 * time.Second)
 
 		slog.Debug("Finding sender from DHT...")
@@ -54,11 +42,7 @@ func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
 		} else {
 			validPeers := []peer.AddrInfo{}
 			for addrInfo := range peers {
-				nodeID, err := node.GetNodeID(addrInfo.ID)
-				if err != nil {
-					slog.Warn("Error getting node ID.", "sender", addrInfo)
-					continue
-				}
+				nodeID := node.GetNodeID(addrInfo.ID)
 				if !strings.HasSuffix(nodeID.String(), id) {
 					slog.Warn("Found invalid sender advertising topic.", "topic", id, "sender", addrInfo)
 					continue
@@ -78,7 +62,7 @@ func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
 			}
 		}
 	}
-	return sender, nil
+	return sender, ctx.Err()
 }
 
 func connectToSender(ctx context.Context, host host.Host, peerID peer.ID) error {
@@ -87,11 +71,10 @@ func connectToSender(ctx context.Context, host host.Host, peerID peer.ID) error 
 		addrs := host.Peerstore().Addrs(peerID)
 		err := host.Connect(ctx, peer.AddrInfo{ID: peerID, Addrs: addrs})
 		if err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
+			if ctx.Err() == nil {
+				slog.Debug("Error connecting to sender.", "error", err)
+				time.Sleep(time.Second)
 			}
-			slog.Debug("Error connecting to sender.", "error", err)
-			time.Sleep(time.Second)
 			continue
 		}
 		slog.Info("Connected to sender.", "sender", peerID)
@@ -109,11 +92,10 @@ func getStream(ctx context.Context, host host.Host, peerID peer.ID, protocol pro
 	for ctx.Err() == nil {
 		stream, err := host.NewStream(ctx, peerID, protocol)
 		if err != nil {
-			if ctx.Err() != nil {
-				return nil, ctx.Err()
+			if ctx.Err() == nil {
+				slog.Debug("Error creating stream", "error", err)
+				time.Sleep(b.Delay())
 			}
-			slog.Debug("Error creating stream", "error", err)
-			time.Sleep(b.Delay())
 			continue
 		}
 		return stream, nil

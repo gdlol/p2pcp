@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"p2pcp/internal/errors"
 )
 
 type GetStream func(ctx context.Context) (io.ReadWriteCloser, error)
@@ -72,13 +73,9 @@ func (w *writeBuffer) prepareWrite(p []byte) (write func(), ok bool) {
 }
 
 func (w *writeBuffer) commit(totalOffset uint64) error {
-	if totalOffset <= w.committed {
-		return nil
-	}
+	errors.Assert(totalOffset >= w.committed, fmt.Sprintf("invalid offset: %d", totalOffset))
 	size := totalOffset - w.committed
-	if size > uint64(w.length) {
-		return fmt.Errorf("invalid offset: %d", totalOffset)
-	}
+	errors.Assert(size <= uint64(w.length), fmt.Sprintf("invalid offset: %d", totalOffset))
 	copy(w.buffer[:], w.buffer[size:w.length])
 	w.length -= uint32(size)
 	w.committed = totalOffset

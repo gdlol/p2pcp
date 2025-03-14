@@ -45,37 +45,36 @@ func registerErrorHandler(host host.Host, peerID peer.ID, handler func(string)) 
 	})
 }
 
-func sendError(ctx context.Context, host host.Host, peerID peer.ID, errStr string) error {
+func sendError(ctx context.Context, host host.Host, peerID peer.ID, errStr string) {
 	ctx, cancel := context.WithTimeout(ctx, 6*time.Second)
 	defer cancel()
 	for ctx.Err() == nil {
 		stream, err := host.NewStream(ctx, peerID, errorProtocol)
 		if err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
+			if ctx.Err() == nil {
+				slog.Debug("Error creating stream for error notification", "error", err)
+				time.Sleep(100 * time.Millisecond)
 			}
-			slog.Debug("Error creating stream for error notification", "error", err)
-			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 		err = func() error {
 			defer stream.Close()
 			err := writeString(stream, errStr)
 			if err == nil {
-				n, err := stream.Read(make([]byte, 1))
+				var n int
+				n, err = stream.Read(make([]byte, 1))
 				if n == 1 {
-					return nil
+					err = nil
 				} else {
-					return fmt.Errorf("error reading error ack: %v", err)
+					err = fmt.Errorf("error reading error ack: %v", err)
 				}
 			}
 			return err
 		}()
 		if err == nil {
-			return nil
+			return
 		} else {
 			slog.Debug("Error sending error message", "error", err)
 		}
 	}
-	return ctx.Err()
 }

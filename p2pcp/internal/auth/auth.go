@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"p2pcp/internal/errors"
 	"strings"
 	"time"
 
@@ -29,9 +30,7 @@ func GetOneTimeSecret() string {
 	digits := make([]string, pinLength)
 	for i := range digits {
 		n, err := rand.Int(rand.Reader, big.NewInt(10))
-		if err != nil {
-			panic(err)
-		}
+		errors.Unexpected(err, "GetOneTimeSecret: rand.Int")
 		digits[i] = n.String()
 	}
 	return strings.Join(digits, "")

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"p2pcp/internal/path"
 	"p2pcp/internal/send"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -25,28 +25,21 @@ var SendCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 
-		var path string
-		var err error
+		var basePath string
 		if len(args) == 0 {
-			path, err = os.Getwd()
-			if err != nil {
-				return fmt.Errorf("error getting current working directory: %w", err)
-			}
+			basePath = path.GetCurrentDirectory()
 		} else {
-			path, err = filepath.Abs(args[0])
-			if err != nil {
-				return fmt.Errorf("error getting absolute path: %w", err)
-			}
+			basePath = path.GetAbsolutePath(args[0])
 		}
-		if _, err := os.Lstat(path); os.IsNotExist(err) {
-			return fmt.Errorf("path: path %s does not exist", path)
+		if _, err := os.Lstat(basePath); err != nil {
+			return err
 		}
 
 		strict, _ := cmd.Flags().GetBool("strict")
 		private, _ := cmd.Flags().GetBool("private")
 
-		slog.Debug(fmt.Sprintf("Sending %s...", path), "strict", strict, "private", private)
-		return send.Send(ctx, path, strict, private)
+		slog.Debug(fmt.Sprintf("Sending %s...", basePath), "strict", strict, "private", private)
+		return send.Send(ctx, basePath, strict, private)
 	},
 }
 

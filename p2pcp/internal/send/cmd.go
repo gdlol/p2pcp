@@ -12,7 +12,7 @@ import (
 	"moul.io/drunken-bishop/drunkenbishop"
 )
 
-func Send(ctx context.Context, path string, strict bool, private bool) error {
+func Send(ctx context.Context, basePath string, strict bool, private bool) error {
 	ctx = network.WithAllowLimitedConn(ctx, "hole-punching")
 
 	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
@@ -26,10 +26,7 @@ func Send(ctx context.Context, path string, strict bool, private bool) error {
 	defer sender.Close()
 	n := sender.GetNode()
 
-	err = n.StartMdns()
-	if err != nil {
-		return fmt.Errorf("error starting mDNS service: %w", err)
-	}
+	n.StartMdns()
 
 	if !strict {
 		fmt.Println("Node ID:", n.ID())
@@ -68,7 +65,7 @@ func Send(ctx context.Context, path string, strict bool, private bool) error {
 	}
 
 	fmt.Println("Sending...")
-	err = sender.Send(ctx, receiver, path)
+	err = sender.Send(ctx, receiver, basePath)
 	if err == nil {
 		fmt.Println("Done.")
 	}

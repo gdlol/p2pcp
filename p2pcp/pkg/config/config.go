@@ -3,8 +3,11 @@ package config
 // spell-checker: ignore adrg
 
 import (
+	"encoding/json"
+	"p2pcp/internal/errors"
 	"path/filepath"
 	"project/pkg/project"
+	"strings"
 
 	"github.com/adrg/xdg"
 	"github.com/spf13/viper"
@@ -20,25 +23,31 @@ func NewConfig() Config {
 	}
 }
 
-func init() {
+func initializeConfig() {
+	xdg.Reload()
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
 	viper.AddConfigPath(filepath.Join(xdg.ConfigHome, project.Name))
 	defaultConfig := NewConfig()
-	viper.SetDefault("BootstrapPeers", defaultConfig.BootstrapPeers)
+	jsonString, err := json.Marshal(defaultConfig)
+	errors.Unexpected(err, "initializeConfig: Marshal default config")
+	viper.ReadConfig(strings.NewReader(string(jsonString)))
+}
+
+func init() {
+	initializeConfig()
 }
 
 var config = NewConfig()
 
 func LoadConfig() error {
-	if err := viper.ReadInConfig(); err != nil {
+	if err := viper.MergeInConfig(); err != nil {
 		return nil
 	}
 	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
-		return err
+	if err := viper.Unmarshal(&cfg); err == nil {
+		config = cfg
 	}
-	config = cfg
 	return nil
 }
 

@@ -15,16 +15,13 @@ type mdnsNotifee struct {
 }
 
 func (notifee *mdnsNotifee) HandlePeerFound(addrInfo peer.AddrInfo) {
-	if notifee.ctx.Err() != nil {
-		return
+	if notifee.ctx.Err() == nil {
+		slog.Debug("mdns: found new peer.", "peer", addrInfo.ID)
+		err := notifee.host.Connect(notifee.ctx, addrInfo)
+		if err == nil {
+			notifee.host.ConnManager().Protect(addrInfo.ID, "mdns")
+		}
 	}
-	slog.Debug("mdns: found new peer.", "peer", addrInfo.ID)
-	err := notifee.host.Connect(notifee.ctx, addrInfo)
-	if err != nil {
-		slog.Warn("mdns: failed to connect to peer.", "peer", addrInfo, "error", err)
-		return
-	}
-	notifee.host.ConnManager().Protect(addrInfo.ID, "mdns")
 }
 
 func createMdnsService(ctx context.Context, host host.Host, serviceName string) mdns.Service {

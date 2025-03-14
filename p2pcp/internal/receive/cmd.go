@@ -15,16 +15,10 @@ import (
 func Receive(ctx context.Context, id string, secret string, basePath string, private bool) error {
 	ctx = network.WithAllowLimitedConn(ctx, "hole-punching")
 
-	n, err := node.NewNode(ctx, private)
-	if err != nil {
-		return fmt.Errorf("error creating new node: %w", err)
-	}
+	n := node.NewNode(ctx, private)
 	defer n.Close()
 
-	err = n.StartMdns()
-	if err != nil {
-		return fmt.Errorf("error starting mDNS service: %w", err)
-	}
+	n.StartMdns()
 	receiver := NewReceiver(n)
 
 	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
@@ -36,10 +30,7 @@ func Receive(ctx context.Context, id string, secret string, basePath string, pri
 		return fmt.Errorf("error finding sender: %w", err)
 	}
 
-	nodeID, err := node.GetNodeID(peer)
-	if err != nil {
-		return fmt.Errorf("error getting node ID for %v: %w", peer, err)
-	}
+	nodeID := node.GetNodeID(peer)
 	if id != nodeID.String() { // non-strict mode
 		fmt.Println("Sender ID:", nodeID.String())
 		fmt.Println("Please verify that the following random art matches the one displayed on the sender's side.")

@@ -18,15 +18,13 @@ func TestGetNodeID(t *testing.T) {
 	bytes, err := privKey.Raw()
 	require.NoError(t, err)
 	pubKey := ed25519.PrivateKey(bytes).Public().(ed25519.PublicKey)
-	node, err := NewNode(t.Context(), true, libp2p.Identity(privKey))
-	require.NoError(t, err)
+	node := NewNode(t.Context(), true, libp2p.Identity(privKey))
 	defer node.Close()
 	assert.Equal(t, auth.ComputeHash(pubKey), node.ID().Bytes())
 }
 
 func TestNewNode(t *testing.T) {
-	node1, err := NewNode(t.Context(), true)
-	require.NoError(t, err)
+	node1 := NewNode(t.Context(), true)
 	defer node1.Close()
-	assert.Equal(t, true, node1.IsPrivateMode())
+	assert.Equal(t, true, node1.(*node).privateMode)
 }
