@@ -89,7 +89,7 @@ func TestUnauthorizedStream(t *testing.T) {
 	err = net.LinkAll()
 	require.NoError(t, err)
 
-	streams, _ := getAuthorizedStreams(t.Context(), h1, h2.ID())
+	streams, _ := getAuthorizedStreams(h1, h2.ID())
 
 	go func() {
 		for stream := range streams {

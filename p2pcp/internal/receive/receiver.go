@@ -162,10 +162,8 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 
 	err = transfer.ReadZip(reader, basePath)
 	if err != nil {
-		if ctx.Err() == nil {
-			n.SendError(context.Background(), sender, "")
-			cancel()
-		}
+		n.SendError(ctx, sender, "")
+		cancel()
 		return fmt.Errorf("error receiving zip: %w", err)
 	}
 

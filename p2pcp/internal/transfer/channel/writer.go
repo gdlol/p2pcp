@@ -68,10 +68,7 @@ func (c *channelWriter) Flush(end bool) error {
 			c.closeStream()
 			continue
 		}
-		err = c.writeBuffer.commit(offset)
-		if err != nil {
-			return fmt.Errorf("error committing write buffer: %w", err)
-		}
+		c.writeBuffer.commit(offset)
 		data := c.writeBuffer.data()
 		if len(data) == 0 {
 			return nil
@@ -85,9 +82,12 @@ func (c *channelWriter) Flush(end bool) error {
 			if err != nil {
 				c.logger.Debug("Error flushing data.", "error", err)
 				c.closeStream()
-				continue
+				break
 			}
 			data = data[len(buffer):]
+		}
+		if err != nil {
+			continue
 		}
 		if end {
 			continue // ensure buffer empty
@@ -98,9 +98,6 @@ func (c *channelWriter) Flush(end bool) error {
 }
 
 func (c *channelWriter) write(p []byte) (n int, err error) {
-	if len(p) == 0 {
-		return 0, nil
-	}
 	for c.ctx.Err() == nil {
 		stream, new, err := c.getCurrentStream(c.ctx)
 		if err != nil {
@@ -121,13 +118,16 @@ func (c *channelWriter) write(p []byte) (n int, err error) {
 			c.closeStream()
 			continue
 		}
-		writeCache()
+		writeCache(c.writeBuffer, p)
 		return len(p), nil
 	}
 	return 0, c.ctx.Err()
 }
 
 func (c *channelWriter) Write(p []byte) (n int, err error) {
+	if c.closed {
+		return 0, io.ErrClosedPipe
+	}
 	n = 0
 	for len(p) > 0 {
 		buffer := p
@@ -160,7 +160,7 @@ func (c *channelWriter) Close() error {
 	ctx, cancel := context.WithTimeout(c.ctx, 3*time.Second)
 	defer cancel()
 	defer c.closeStream()
-	for c.ctx.Err() == nil {
+	for ctx.Err() == nil {
 		stream, _, err := c.getCurrentStream(ctx)
 		if err != nil {
 			return err
@@ -182,7 +182,7 @@ func (c *channelWriter) Close() error {
 			return nil
 		}
 	}
-	return c.ctx.Err()
+	return ctx.Err()
 }
 
 func NewChannelWriter(ctx context.Context, getStream GetStream) ChannelWriter {

@@ -60,24 +60,25 @@ func (w *writeBuffer) data() []byte {
 	return w.buffer[:w.length]
 }
 
-func (w *writeBuffer) prepareWrite(p []byte) (write func(), ok bool) {
+func writePrepared(w *writeBuffer, p []byte) {
+	copy(w.buffer[w.length:], p)
+	w.length += uint32(len(p))
+}
+
+func (w *writeBuffer) prepareWrite(p []byte) (write func(w *writeBuffer, p []byte), ok bool) {
 	size := uint32(len(p))
 	if w.length+size > writeBufferSize {
 		return nil, false
 	} else {
-		return func() {
-			copy(w.buffer[w.length:], p)
-			w.length += size
-		}, true
+		return writePrepared, true
 	}
 }
 
-func (w *writeBuffer) commit(totalOffset uint64) error {
+func (w *writeBuffer) commit(totalOffset uint64) {
 	errors.Assert(totalOffset >= w.committed, fmt.Sprintf("invalid offset: %d", totalOffset))
 	size := totalOffset - w.committed
 	errors.Assert(size <= uint64(w.length), fmt.Sprintf("invalid offset: %d", totalOffset))
 	copy(w.buffer[:], w.buffer[size:w.length])
 	w.length -= uint32(size)
 	w.committed = totalOffset
-	return nil
 }

@@ -106,7 +106,7 @@ func (s *sender) WaitForReceiver(ctx context.Context, secretHash []byte) (peer.I
 	return authenticateReceiver(ctx, s.node.GetHost(), secretHash, s.strictMode)
 }
 
-func getAuthorizedStreams(ctx context.Context, host host.Host, receiver peer.ID) (chan io.ReadWriteCloser, func()) {
+func getAuthorizedStreams(host host.Host, receiver peer.ID) (chan io.ReadWriteCloser, func()) {
 	streams := make(chan io.ReadWriteCloser, 1)
 	cancel := func() {
 		host.RemoveStreamHandler(transfer.Protocol)
@@ -134,7 +134,7 @@ func (s *sender) Send(ctx context.Context, receiver peer.ID, basePath string) (e
 		slog.Error("Receiver error", "error", errStr)
 		cancel()
 	})
-	streams, cancelStreams := getAuthorizedStreams(ctx, host, receiver)
+	streams, cancelStreams := getAuthorizedStreams(host, receiver)
 	interrupt.RegisterInterruptHandler(ctx, func() {
 		cancelStreams()
 		n.SendError(ctx, receiver, "Transfer canceled.")
@@ -160,10 +160,8 @@ func (s *sender) Send(ctx context.Context, receiver peer.ID, basePath string) (e
 		err = writer.Flush(true)
 	}
 	if err != nil {
-		if ctx.Err() == nil {
-			n.SendError(context.Background(), receiver, "")
-			cancel()
-		}
+		n.SendError(ctx, receiver, "")
+		cancel()
 		return fmt.Errorf("error sending path %s: %w", basePath, err)
 	}
 

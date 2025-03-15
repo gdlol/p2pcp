@@ -65,6 +65,7 @@ func (c *channelReader) read(p *[readBufferSize]byte) (n int, err error) {
 		} else {
 			if payloadLength == 0 { // FIN
 				c.readClosed = true
+				c.offset = math.MaxUint64
 				return 0, io.EOF
 			} else {
 				c.offset += uint64(payloadLength)
@@ -101,7 +102,7 @@ func (c *channelReader) Close() error {
 	ctx, cancel := context.WithTimeout(c.ctx, 3*time.Second)
 	defer cancel()
 	defer c.closeStream()
-	for c.ctx.Err() == nil {
+	for ctx.Err() == nil {
 		stream, err := c.getCurrentStream(ctx)
 		if err != nil {
 			return err
@@ -109,9 +110,10 @@ func (c *channelReader) Close() error {
 
 		ack, payloadLength, err := readPacket(stream, c.readBuffer.buffer)
 		if err != nil {
-			if err == io.EOF || c.readClosed {
+			if err == io.EOF && c.readClosed {
 				return nil
 			}
+			fmt.Println("Error reading FIN.", "error", err)
 			c.logger.Debug("Error reading FIN.", "error", err)
 			c.closeStream()
 			continue
@@ -127,10 +129,11 @@ func (c *channelReader) Close() error {
 			if payloadLength > 0 {
 				return fmt.Errorf("unexpected data packet during close")
 			}
+			c.readClosed = true
 			c.offset = math.MaxUint64
 		}
 	}
-	return c.ctx.Err()
+	return ctx.Err()
 }
 
 func NewChannelReader(ctx context.Context, getStream GetStream) io.ReadCloser {

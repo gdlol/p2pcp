@@ -24,7 +24,7 @@ func TestConnectTimeout(t *testing.T) {
 	h2, err := net.GenPeer()
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
 
 	err = connectToSender(ctx, h1, h2.ID())
@@ -48,7 +48,7 @@ func TestConnectRetry(t *testing.T) {
 	connected := false
 	connect := make(chan error)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	go func() {
@@ -89,7 +89,7 @@ func TestGetStreamTimeout(t *testing.T) {
 	_, err = net.LinkPeers(h1.ID(), h2.ID())
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
 
 	_, err = getStream(ctx, h1, h2.ID(), protocol.TestingID)
@@ -115,7 +115,7 @@ func TestGetStreamRetry(t *testing.T) {
 	newStream := false
 	connect := make(chan error)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	go func() {
@@ -162,7 +162,7 @@ func TestAuthenticateTimeout(t *testing.T) {
 	_, err = net.LinkPeers(h1.ID(), h2.ID())
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
 
 	err = authenticate(ctx, h1, h2.ID(), []byte("test"))
