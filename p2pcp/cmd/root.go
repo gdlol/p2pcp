@@ -8,6 +8,7 @@ import (
 
 	"p2pcp/cmd/receive"
 	"p2pcp/cmd/send"
+	"p2pcp/internal/errors"
 	"p2pcp/pkg/config"
 
 	"github.com/spf13/cobra"
@@ -22,7 +23,10 @@ var RootCmd = &cobra.Command{
 }
 
 func Execute() {
-	if err := RootCmd.Execute(); err != nil {
+	var err = errors.RecoverUnexpected(func() error {
+		return RootCmd.Execute()
+	})
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

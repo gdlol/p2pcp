@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"p2pcp/internal/errors"
 	"strings"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"golang.org/x/crypto/blake2b"
+	"moul.io/drunken-bishop/drunkenbishop"
 )
 
 const Protocol protocol.ID = "/p2pcp/auth/0.1.0"
@@ -29,9 +31,7 @@ func GetOneTimeSecret() string {
 	digits := make([]string, pinLength)
 	for i := range digits {
 		n, err := rand.Int(rand.Reader, big.NewInt(10))
-		if err != nil {
-			panic(err)
-		}
+		errors.Unexpected(err, "GetOneTimeSecret: rand.Int")
 		digits[i] = n.String()
 	}
 	return strings.Join(digits, "")
@@ -39,6 +39,10 @@ func GetOneTimeSecret() string {
 
 func GetStrongSecret() string {
 	return rand.Text()
+}
+
+func RandomArt(bytes []byte) string {
+	return drunkenbishop.FromBytes(bytes).String()
 }
 
 func HandleAuthenticate(stream io.ReadWriteCloser, secretHash []byte) (*bool, error) {

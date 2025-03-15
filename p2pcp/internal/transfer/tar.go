@@ -7,6 +7,8 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"p2pcp/internal/errors"
+	Path "p2pcp/internal/path"
 	"path/filepath"
 
 	progress "github.com/schollz/progressbar/v3"
@@ -15,14 +17,8 @@ import (
 // spell-checker: ignore Typeflag
 
 func isInBasePath(basePath, targetPath string) bool {
-	basePath, err := filepath.Abs(basePath)
-	if err != nil {
-		return false
-	}
-	targetPath, err = filepath.Abs(targetPath)
-	if err != nil {
-		return false
-	}
+	basePath = Path.GetAbsolutePath(basePath)
+	targetPath = Path.GetAbsolutePath(targetPath)
 
 	path := targetPath
 	for basePath != path {
@@ -65,10 +61,7 @@ func readFile(header *tar.Header, reader io.Reader, path string) error {
 }
 
 func readTar(r io.Reader, basePath string) error {
-	basePath, err := filepath.Abs(basePath)
-	if err != nil {
-		return fmt.Errorf("error getting absolute path for %s: %w", basePath, err)
-	}
+	basePath = Path.GetAbsolutePath(basePath)
 
 	symlinks := make(map[string]string)
 	reader := tar.NewReader(r)
@@ -134,7 +127,7 @@ func readTar(r io.Reader, basePath string) error {
 				}
 			}
 		}
-		err = os.Symlink(linkName, linkPath)
+		err := os.Symlink(linkName, linkPath)
 		if err != nil {
 			slog.Warn(fmt.Sprintf("error creating symbolic link %s -> %s: %v", linkPath, linkName, err))
 		}
@@ -143,7 +136,7 @@ func readTar(r io.Reader, basePath string) error {
 	// Drain padding
 	buffer := make([]byte, 512)
 	for {
-		_, err = r.Read(buffer)
+		_, err := r.Read(buffer)
 		if err == io.EOF {
 			break
 		}
@@ -184,10 +177,7 @@ func writeFile(header *tar.Header, writer *tar.Writer, path string) error {
 }
 
 func writeTar(w io.Writer, basePath string) error {
-	basePath, err := filepath.Abs(basePath)
-	if err != nil {
-		return fmt.Errorf("error getting absolute path for %s: %w", basePath, err)
-	}
+	basePath = Path.GetAbsolutePath(basePath)
 	rootInfo, err := os.Lstat(basePath)
 	if err != nil {
 		return err
@@ -199,9 +189,7 @@ func writeTar(w io.Writer, basePath string) error {
 			return fmt.Errorf("unsupported file type: %s", basePath)
 		}
 		header, err := tar.FileInfoHeader(getTarFileInfo(rootInfo), "")
-		if err != nil {
-			return fmt.Errorf("error creating tar header: %w", err)
-		}
+		errors.Unexpected(err, fmt.Sprintf("error getting file info header for %s", basePath))
 		header.Name = rootInfo.Name()
 		err = writeFile(header, writer, basePath)
 		if err != nil {
@@ -226,23 +214,13 @@ func writeTar(w io.Writer, basePath string) error {
 				if !isInBasePath(basePath, destination) {
 					return nil // Skip symbolic links targeting outside of the base path.
 				}
-				link, err = filepath.Rel(filepath.Dir(path), destination) // All links become relative.
-				if err != nil {
-					return fmt.Errorf(
-						"error getting relative path for symbolic link %s -> %s: %w",
-						path, destination, err)
-				}
+				link = Path.GetRelativePath(filepath.Dir(path), destination) // All links become relative.
 			}
 			header, err := tar.FileInfoHeader(getTarFileInfo(info), link)
-			if err != nil {
-				return fmt.Errorf("error creating tar header: %s: %w", path, err)
-			}
+			errors.Unexpected(err, fmt.Sprintf("error getting file info header for %s", path))
 
 			// Sets relative entry path to header, all paths are prefixed with the base directory name.
-			name, err := filepath.Rel(basePath, path)
-			if err != nil {
-				return fmt.Errorf("error getting relative path for %s: %w", path, err)
-			}
+			name := Path.GetRelativePath(basePath, path)
 			name = filepath.Join(rootInfo.Name(), name)
 			name = filepath.ToSlash(name)
 			header.Name = name
@@ -261,7 +239,7 @@ func writeTar(w io.Writer, basePath string) error {
 	}
 
 	if err = writer.Close(); err != nil {
-		return fmt.Errorf("error closing tar ball: %w", err)
+		return fmt.Errorf("error closing tar: %w", err)
 	}
 
 	return nil

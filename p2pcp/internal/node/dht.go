@@ -3,6 +3,8 @@ package node
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"p2pcp/internal/errors"
 	"p2pcp/pkg/config"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -12,39 +14,33 @@ import (
 	"github.com/multiformats/go-multiaddr"
 )
 
-func getBootstrapPeers() ([]peer.AddrInfo, error) {
-	config := config.GetConfig()
-	if len(config.BootstrapPeers) > 0 {
-		bootstrapPeers := make([]peer.AddrInfo, 0, len(config.BootstrapPeers))
-		for _, addr := range config.BootstrapPeers {
+func getBootstrapPeers(peers []string) []peer.AddrInfo {
+	if len(peers) > 0 {
+		bootstrapPeers := make([]peer.AddrInfo, 0, len(peers))
+		for _, addr := range peers {
 			ma, err := multiaddr.NewMultiaddr(addr)
 			var addrInfo *peer.AddrInfo
 			if err == nil {
 				addrInfo, err = peer.AddrInfoFromP2pAddr(ma)
 			}
 			if err != nil {
-				return nil, fmt.Errorf("error getting bootstrap peers: %w", err)
+				slog.Error(fmt.Sprintf("error parsing bootstrap peer %s: %s", addr, err))
+				continue
 			}
 			bootstrapPeers = append(bootstrapPeers, *addrInfo)
 		}
-		return bootstrapPeers, nil
+		return bootstrapPeers
 	} else {
-		return dht.GetDefaultBootstrapPeerAddrInfos(), nil
+		return dht.GetDefaultBootstrapPeerAddrInfos()
 	}
 }
 
-func createDHT(ctx context.Context, host host.Host) (*dual.DHT, error) {
-	bootstrapPeers, err := getBootstrapPeers()
-	if err != nil {
-		return nil, err
-	}
+func createDHT(ctx context.Context, host host.Host) *dual.DHT {
+	config := config.GetConfig()
+	bootstrapPeers := getBootstrapPeers(config.BootstrapPeers)
 	dualDHT, err := dual.New(ctx, host, dual.DHTOption(dht.BootstrapPeers(bootstrapPeers...)))
-	if err != nil {
-		return nil, fmt.Errorf("error creating DHT: %w", err)
-	}
+	errors.Unexpected(err, "create DHT")
 	err = dualDHT.Bootstrap(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error bootstrapping DHT: %w", err)
-	}
-	return dualDHT, nil
+	errors.Unexpected(err, "bootstrap DHT")
+	return dualDHT
 }

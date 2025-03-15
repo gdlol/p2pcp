@@ -30,21 +30,18 @@ type receiver struct {
 	node node.Node
 }
 
-func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
-	if !r.node.IsPrivateMode() {
-		slog.Debug("Waiting for WAN connection...")
-		err := r.node.WaitForWAN(ctx)
-		if err != nil {
-			return "", err
-		}
-		slog.Debug("Connected to WAN.")
+func isValidPeer(peer peer.AddrInfo, id string) bool {
+	nodeID := node.GetNodeID(peer.ID)
+	valid := strings.HasSuffix(nodeID.String(), id)
+	if !valid {
+		slog.Warn("Found invalid sender advertising topic.", "topic", id, "sender", peer)
 	}
+	return valid
+}
 
+func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
 	var sender peer.ID
-	for {
-		if ctx.Err() != nil {
-			return "", ctx.Err()
-		}
+	for ctx.Err() == nil {
 		time.Sleep(1 * time.Second)
 
 		slog.Debug("Finding sender from DHT...")
@@ -52,33 +49,18 @@ func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
 		if err != nil {
 			slog.Debug("Error finding sender from DHT, retrying...", "error", err)
 		} else {
-			validPeers := []peer.AddrInfo{}
 			for addrInfo := range peers {
-				nodeID, err := node.GetNodeID(addrInfo.ID)
-				if err != nil {
-					slog.Warn("Error getting node ID.", "sender", addrInfo)
-					continue
+				if isValidPeer(addrInfo, id) {
+					sender = addrInfo.ID
+					slog.Info("Found sender.", "sender", sender)
+					// Mark sender as candidate for DHT routing.
+					r.node.GetHost().Peerstore().Put(sender, node.DhtRoutingTag, struct{}{})
+					return sender, nil
 				}
-				if !strings.HasSuffix(nodeID.String(), id) {
-					slog.Warn("Found invalid sender advertising topic.", "topic", id, "sender", addrInfo)
-					continue
-				}
-				validPeers = append(validPeers, addrInfo)
-				break
-			}
-			if len(validPeers) == 1 {
-				sender = validPeers[0].ID
-				slog.Info("Found sender.", "sender", sender)
-				// Mark sender as candidate for DHT routing.
-				r.node.GetHost().Peerstore().Put(sender, node.DhtRoutingTag, struct{}{})
-				break
-			} else if len(validPeers) > 1 {
-				slog.Warn("Found multiple peers advertising topic.", "topic", id, "peers", validPeers)
-				return "", fmt.Errorf("found multiple peers advertising topic %s", id)
 			}
 		}
 	}
-	return sender, nil
+	return sender, ctx.Err()
 }
 
 func connectToSender(ctx context.Context, host host.Host, peerID peer.ID) error {
@@ -87,11 +69,10 @@ func connectToSender(ctx context.Context, host host.Host, peerID peer.ID) error 
 		addrs := host.Peerstore().Addrs(peerID)
 		err := host.Connect(ctx, peer.AddrInfo{ID: peerID, Addrs: addrs})
 		if err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
+			if ctx.Err() == nil {
+				slog.Debug("Error connecting to sender.", "error", err)
+				time.Sleep(time.Second)
 			}
-			slog.Debug("Error connecting to sender.", "error", err)
-			time.Sleep(time.Second)
 			continue
 		}
 		slog.Info("Connected to sender.", "sender", peerID)
@@ -109,11 +90,10 @@ func getStream(ctx context.Context, host host.Host, peerID peer.ID, protocol pro
 	for ctx.Err() == nil {
 		stream, err := host.NewStream(ctx, peerID, protocol)
 		if err != nil {
-			if ctx.Err() != nil {
-				return nil, ctx.Err()
+			if ctx.Err() == nil {
+				slog.Debug("Error creating stream", "error", err)
+				time.Sleep(b.Delay())
 			}
-			slog.Debug("Error creating stream", "error", err)
-			time.Sleep(b.Delay())
 			continue
 		}
 		return stream, nil
@@ -180,10 +160,8 @@ func (r *receiver) Receive(ctx context.Context, sender peer.ID, secretHash []byt
 
 	err = transfer.ReadZip(reader, basePath)
 	if err != nil {
-		if ctx.Err() == nil {
-			n.SendError(context.Background(), sender, "")
-			cancel()
-		}
+		n.SendError(ctx, sender, "")
+		cancel()
 		return fmt.Errorf("error receiving zip: %w", err)
 	}
 

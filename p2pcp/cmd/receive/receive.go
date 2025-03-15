@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"p2pcp/internal/path"
 	"p2pcp/internal/receive"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -30,25 +30,19 @@ var ReceiveCmd = &cobra.Command{
 			return fmt.Errorf("id: must be at least 7 characters long")
 		}
 
-		var path string
+		var basePath string
 		var err error
 		if len(args) == 1 {
-			path, err = os.Getwd()
-			if err != nil {
-				return fmt.Errorf("error getting current working directory: %w", err)
-			}
+			basePath = path.GetCurrentDirectory()
 		} else {
-			path, err = filepath.Abs(args[1])
-			if err != nil {
-				return fmt.Errorf("error getting absolute path: %w", err)
-			}
+			basePath = path.GetAbsolutePath(args[1])
 		}
-		info, err := os.Lstat(path)
-		if os.IsNotExist(err) {
-			return fmt.Errorf("path: directory %s does not exist", path)
+		info, err := os.Lstat(basePath)
+		if err != nil {
+			return err
 		}
 		if !info.IsDir() {
-			return fmt.Errorf("path: %s is not a directory", path)
+			return fmt.Errorf("path: %s is not a directory", basePath)
 		}
 
 		fmt.Printf("Enter PIN/token: ")
@@ -60,7 +54,7 @@ var ReceiveCmd = &cobra.Command{
 
 		private, _ := cmd.Flags().GetBool("private")
 
-		slog.Debug("Receiving...", "id", id, "path", path, "private", private)
-		return receive.Receive(ctx, id, secret, path, private)
+		slog.Debug("Receiving...", "id", id, "path", basePath, "private", private)
+		return receive.Receive(ctx, id, secret, basePath, private)
 	},
 }

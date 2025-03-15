@@ -15,7 +15,7 @@ func getGitHubClient() *github.Client {
 func GetDefaultBranch(ctx context.Context) string {
 	client := getGitHubClient()
 	owner, repoName := GetRepoInfo()
-	repo, _, err := client.Repositories.Get(context.Background(), owner, repoName)
+	repo, _, err := client.Repositories.Get(ctx, owner, repoName)
 	Check(err)
 	return repo.GetDefaultBranch()
 }
