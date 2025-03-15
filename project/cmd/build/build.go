@@ -27,9 +27,9 @@ func Run() {
 
 var BuildCmd = &cobra.Command{
 	Use: "build",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		Run()
-		generateDocs()
+		return generateDocs()
 	},
 }
 

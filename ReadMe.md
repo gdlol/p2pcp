@@ -167,7 +167,22 @@ By default, `id` will be the `7` character suffix of the sender's hashed, Base58
 however, deliberate collision would still be possible by a motivated attacker.
 
 To verify the sender's identity with confidence, the receiver is expected to compare the sender's Random Art
-(visual representation of the sender's node ID) with the one displayed on the sender's side.
+(visual representation of the sender's node ID) with the one displayed on the sender's side. Example:
+
+```
+Node ID: 5DC6qJatRBYtmnX2w6SiuWmEwuCB8ZDtekfRaEGVBc4Z
++-----------------+
+|        .++.oo=o |
+|   .   . ++o.=oo |
+|  =   .E+o..o.= .|
+| + . . oo.   o o |
+|+.... =.S     .  |
+|oo.+.=.o         |
+|  + o.. o        |
+| . . + o .       |
+|  ..=.. .        |
++-----------------+
+```
 
 Random Art[[1](#r1)] was popularized by OpenSSH and is commonly seen during the usage of
 [ssh-keygen](https://man.openbsd.org/ssh-keygen#l).
@@ -191,9 +206,11 @@ On the downside, `id` and `secret` are much longer and less feasible for manual 
 
 ## Features
 
+- End to end encryption with libp2p
 - Peer discovery through DHT/mDNS
 - NAT traversal with hole-punching and auto relays
 - Cross platform (Linux, macOS, Windows)
+- Transfer files or directories
 - Proper handling of special file types
 - Sustain across network interruptions
 
