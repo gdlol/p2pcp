@@ -12,6 +12,7 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"golang.org/x/crypto/blake2b"
+	"moul.io/drunken-bishop/drunkenbishop"
 )
 
 const Protocol protocol.ID = "/p2pcp/auth/0.1.0"
@@ -38,6 +39,10 @@ func GetOneTimeSecret() string {
 
 func GetStrongSecret() string {
 	return rand.Text()
+}
+
+func RandomArt(bytes []byte) string {
+	return drunkenbishop.FromBytes(bytes).String()
 }
 
 func HandleAuthenticate(stream io.ReadWriteCloser, secretHash []byte) (*bool, error) {

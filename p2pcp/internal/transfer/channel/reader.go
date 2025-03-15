@@ -113,7 +113,6 @@ func (c *channelReader) Close() error {
 			if err == io.EOF && c.readClosed {
 				return nil
 			}
-			fmt.Println("Error reading FIN.", "error", err)
 			c.logger.Debug("Error reading FIN.", "error", err)
 			c.closeStream()
 			continue

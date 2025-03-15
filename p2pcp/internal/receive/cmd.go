@@ -9,7 +9,6 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/libp2p/go-libp2p/core/network"
-	"moul.io/drunken-bishop/drunkenbishop"
 )
 
 func Receive(ctx context.Context, id string, secret string, basePath string, private bool) error {
@@ -34,8 +33,7 @@ func Receive(ctx context.Context, id string, secret string, basePath string, pri
 	if id != nodeID.String() { // non-strict mode
 		fmt.Println("Sender ID:", nodeID.String())
 		fmt.Println("Please verify that the following random art matches the one displayed on the sender's side.")
-		room := drunkenbishop.FromBytes(nodeID.Bytes())
-		fmt.Println(room)
+		fmt.Println(auth.RandomArt(nodeID.Bytes()))
 		fmt.Println("Are you sure you want to connect to this sender? [y/N]")
 		var confirm string
 		fmt.Scanln(&confirm)

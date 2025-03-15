@@ -30,6 +30,15 @@ type receiver struct {
 	node node.Node
 }
 
+func isValidPeer(peer peer.AddrInfo, id string) bool {
+	nodeID := node.GetNodeID(peer.ID)
+	valid := strings.HasSuffix(nodeID.String(), id)
+	if !valid {
+		slog.Warn("Found invalid sender advertising topic.", "topic", id, "sender", peer)
+	}
+	return valid
+}
+
 func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
 	var sender peer.ID
 	for ctx.Err() == nil {
@@ -40,25 +49,14 @@ func (r *receiver) FindPeer(ctx context.Context, id string) (peer.ID, error) {
 		if err != nil {
 			slog.Debug("Error finding sender from DHT, retrying...", "error", err)
 		} else {
-			validPeers := []peer.AddrInfo{}
 			for addrInfo := range peers {
-				nodeID := node.GetNodeID(addrInfo.ID)
-				if !strings.HasSuffix(nodeID.String(), id) {
-					slog.Warn("Found invalid sender advertising topic.", "topic", id, "sender", addrInfo)
-					continue
+				if isValidPeer(addrInfo, id) {
+					sender = addrInfo.ID
+					slog.Info("Found sender.", "sender", sender)
+					// Mark sender as candidate for DHT routing.
+					r.node.GetHost().Peerstore().Put(sender, node.DhtRoutingTag, struct{}{})
+					return sender, nil
 				}
-				validPeers = append(validPeers, addrInfo)
-				break
-			}
-			if len(validPeers) == 1 {
-				sender = validPeers[0].ID
-				slog.Info("Found sender.", "sender", sender)
-				// Mark sender as candidate for DHT routing.
-				r.node.GetHost().Peerstore().Put(sender, node.DhtRoutingTag, struct{}{})
-				break
-			} else if len(validPeers) > 1 {
-				slog.Warn("Found multiple peers advertising topic.", "topic", id, "peers", validPeers)
-				return "", fmt.Errorf("found multiple peers advertising topic %s", id)
 			}
 		}
 	}

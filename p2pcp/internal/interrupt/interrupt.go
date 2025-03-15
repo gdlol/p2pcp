@@ -23,7 +23,7 @@ func RegisterInterruptHandler(ctx context.Context, handler func()) {
 				case <-sigChan:
 					count++
 					if count == 1 {
-						fmt.Println("Canceling...")
+						fmt.Println("\nCanceling...")
 						go handler()
 					} else {
 						os.Exit(1)

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"io"
 	"testing"
@@ -37,6 +38,18 @@ func TestGetOneTimeSecret(t *testing.T) {
 	for c := range chars {
 		assert.Contains(t, digits, c)
 	}
+}
+
+func TestRandomArt(t *testing.T) {
+	randomArts := make(map[string]bool)
+	buffer := make([]byte, 32)
+	for range 1000 {
+		_, err := rand.Read(buffer)
+		require.NoError(t, err)
+		randomArt := RandomArt(buffer)
+		randomArts[randomArt] = true
+	}
+	assert.Len(t, randomArts, 1000)
 }
 
 func TestGetStrongSecret(t *testing.T) {

@@ -9,7 +9,6 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/libp2p/go-libp2p/core/network"
-	"moul.io/drunken-bishop/drunkenbishop"
 )
 
 func Send(ctx context.Context, basePath string, strict bool, private bool) error {
@@ -30,8 +29,7 @@ func Send(ctx context.Context, basePath string, strict bool, private bool) error
 
 	if !strict {
 		fmt.Println("Node ID:", n.ID())
-		room := drunkenbishop.FromBytes(n.ID().Bytes())
-		fmt.Println(room)
+		fmt.Println(auth.RandomArt(n.ID().Bytes()))
 	}
 
 	var id string
