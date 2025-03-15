@@ -147,13 +147,17 @@ func readTar(r io.Reader, basePath string) error {
 	return nil
 }
 
-func writeTarHeader(header *tar.Header, writer *tar.Writer) {
-	err := writer.WriteHeader(header)
-	errors.Unexpected(err, "write tar header")
+func writeTarHeader(header *tar.Header, writer *tar.Writer) error {
+	if err := writer.WriteHeader(header); err != nil {
+		return fmt.Errorf("error writing tar header: %w", err)
+	}
+	return nil
 }
 
 func writeFile(header *tar.Header, writer *tar.Writer, path string) error {
-	writeTarHeader(header, writer)
+	if err := writeTarHeader(header, writer); err != nil {
+		return err
+	}
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -213,9 +217,7 @@ func writeTar(w io.Writer, basePath string) error {
 				link = Path.GetRelativePath(filepath.Dir(path), destination) // All links become relative.
 			}
 			header, err := tar.FileInfoHeader(getTarFileInfo(info), link)
-			if err != nil {
-				return fmt.Errorf("error creating tar header: %s: %w", path, err)
-			}
+			errors.Unexpected(err, fmt.Sprintf("error getting file info header for %s", path))
 
 			// Sets relative entry path to header, all paths are prefixed with the base directory name.
 			name := Path.GetRelativePath(basePath, path)
@@ -226,8 +228,7 @@ func writeTar(w io.Writer, basePath string) error {
 			if info.Mode().IsRegular() {
 				return writeFile(header, writer, path)
 			} else if info.IsDir() || info.Mode()&fs.ModeSymlink == fs.ModeSymlink {
-				writeTarHeader(header, writer)
-				return nil
+				return writeTarHeader(header, writer)
 			} else {
 				return nil // Skip unsupported file types.
 			}
@@ -238,7 +239,7 @@ func writeTar(w io.Writer, basePath string) error {
 	}
 
 	if err = writer.Close(); err != nil {
-		return fmt.Errorf("error closing tar ball: %w", err)
+		return fmt.Errorf("error closing tar: %w", err)
 	}
 
 	return nil
