@@ -25,3 +25,4 @@ jobs:
             CR_IMAGE_NAME=${{ github.repository }}
             CR_VERSION=${{ github.ref_name }}
             CR_PAT=${{ secrets.CR_PAT }}
+            RELEASE_TOKEN=${{ secrets.RELEASE_TOKEN }}

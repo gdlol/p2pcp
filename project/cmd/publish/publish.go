@@ -1,6 +1,7 @@
 package publish
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -14,14 +15,16 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func Run() error {
+func Run(ctx context.Context) error {
 	registry := os.Getenv("CR_REGISTRY")
 	imageName := os.Getenv("CR_IMAGE_NAME")
 	version := os.Getenv("CR_VERSION")
 	token := os.Getenv("CR_PAT")
+	releaseToken := os.Getenv("RELEASE_TOKEN")
 
 	tags := []string{version}
-	if semver.IsValid("v" + version) {
+	isTag := semver.IsValid("v" + version)
+	if isTag {
 		if version != project.Version {
 			return fmt.Errorf("version mismatch: project.Version=%s CR_VERSION=%s", project.Version, version)
 		}
@@ -36,14 +39,26 @@ func Run() error {
 	err := cmd.Run()
 	workspace.Check(err)
 
+	slog.Info("Building binaries...")
+	build.BuildBinaries()
+
 	slog.Info("Publishing multi-arch image...")
 	build.BuildImage(registry, imageName, tags, true)
+
+	if isTag {
+		slog.Info("Creating release...")
+		createRelease(ctx, releaseToken)
+	}
 	return nil
 }
 
 var PublishCmd = &cobra.Command{
 	Use: "publish",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return Run()
+		return Run(cmd.Context())
 	},
+}
+
+func init() {
+	PublishCmd.AddCommand(releaseCmd)
 }

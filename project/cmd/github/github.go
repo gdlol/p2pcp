@@ -1,7 +1,7 @@
 package github
 
 import (
-	"project/pkg/workspace"
+	"project/pkg/github"
 
 	"github.com/spf13/cobra"
 )
@@ -9,7 +9,7 @@ import (
 var pullRequestCmd = &cobra.Command{
 	Use: "pr",
 	Run: func(cmd *cobra.Command, args []string) {
-		workspace.CreatePullRequest(cmd.Context())
+		github.CreatePullRequest(cmd.Context())
 	},
 }
 

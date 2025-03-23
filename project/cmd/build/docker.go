@@ -33,13 +33,17 @@ var platformEnvs = map[string]platformEnv{
 	"windows/arm64": {"windows", "arm64", ""},
 }
 
-func buildBinaries() {
+func GetBinariesPath() string {
+	return filepath.Join(workspace.GetProjectPath(), "bin/docker")
+}
+
+func BuildBinaries() {
 	slog.Info("Building multi-arch binaries...")
 	restore := workspace.SetEnv("CGO_ENABLED", "0")
 	defer restore()
 
 	projectPath := workspace.GetProjectPath()
-	binariesPath := filepath.Join(projectPath, "bin/docker")
+	binariesPath := GetBinariesPath()
 	workspace.ResetDir(binariesPath)
 	var wg sync.WaitGroup
 	wg.Add(len(platformEnvs))
@@ -75,8 +79,6 @@ func buildBinaries() {
 }
 
 func BuildImage(registry string, imageName string, tags []string, publish bool) {
-	buildBinaries()
-
 	// Build multi-arch image.
 	projectPath := workspace.GetProjectPath()
 	platforms := []string{}
@@ -101,6 +103,7 @@ func BuildImage(registry string, imageName string, tags []string, publish bool) 
 var dockerCmd = &cobra.Command{
 	Use: "docker",
 	Run: func(cmd *cobra.Command, args []string) {
+		BuildBinaries()
 		BuildImage("local", project.Name, nil, false)
 	},
 }
