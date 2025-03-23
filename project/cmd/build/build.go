@@ -36,4 +36,5 @@ var BuildCmd = &cobra.Command{
 func init() {
 	BuildCmd.AddCommand(docsCmd)
 	BuildCmd.AddCommand(dockerCmd)
+	BuildCmd.AddCommand(releaseCmd)
 }
