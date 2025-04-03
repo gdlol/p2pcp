@@ -8,6 +8,7 @@ import (
 	"project/cmd/install"
 	"project/cmd/lint"
 	"project/cmd/publish"
+	"project/cmd/renovate"
 	"project/cmd/restore"
 	"project/cmd/sync"
 	"project/cmd/test"
@@ -40,4 +41,5 @@ func init() {
 	rootCmd.AddCommand(publish.PublishCmd)
 	rootCmd.AddCommand(update.UpdateCmd)
 	rootCmd.AddCommand(github.GithubCommand)
+	rootCmd.AddCommand(renovate.RenovateCmd)
 }

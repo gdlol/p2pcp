@@ -1,0 +1,22 @@
+name: "Publish"
+
+on:
+  schedule:
+    - cron: "0 0 16 * *"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (GitHub)
+        uses: actions/checkout@v4
+
+      - name: Renovate
+        uses: devcontainers/ci@v0.3
+        with:
+          imageName: ghcr.io/${{ github.repository }}/devcontainer
+          cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
+          push: never
+          runCmd: pnpm renovate
+          env: GITHUB_TOKEN=${{ github.token }}

@@ -12,7 +12,7 @@ var CodecovCommand = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		projectPath := workspace.GetProjectPath()
 		coverageFile := filepath.Join(projectPath, "coverage/coverage.txt")
-		workspace.Run("codecov", "--verbose", "upload-process",
+		workspace.Run("codecovcli", "--verbose", "upload-process",
 			"--disable-search", "--fail-on-error",
 			"--file", coverageFile)
 	},

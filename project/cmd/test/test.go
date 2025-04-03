@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func run() {
+func Run() {
 	setup()
 
 	// spell-checker: ignore testcache
@@ -56,7 +56,7 @@ func run() {
 var TestCmd = &cobra.Command{
 	Use: "test",
 	Run: func(cmd *cobra.Command, args []string) {
-		run()
+		Run()
 	},
 }
 

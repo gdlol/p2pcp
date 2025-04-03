@@ -8,6 +8,7 @@
     "autorelay",
     "briandowns",
     "buildx",
+    "codecovcli",
     "devcontainer",
     "devcontainers",
     "distroless",
@@ -41,6 +42,7 @@
     "testdata",
     "trimpath",
     "Typeflag",
-    "workfile"
+    "workfile",
+    "worktree"
   ]
 }
