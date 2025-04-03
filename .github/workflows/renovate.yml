@@ -1,4 +1,4 @@
-name: "Publish"
+name: "Renovate"
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  publish:
+  renovate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (GitHub)
