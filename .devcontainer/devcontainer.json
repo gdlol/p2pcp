@@ -1,4 +1,4 @@
-// spell-checker:ignore esbenp
+// spell-checker:ignore esbenp tamasfe
 {
   "name": "p2pcp",
   "dockerComposeFile": "compose.yaml",
@@ -10,9 +10,7 @@
     "ghcr.io/devcontainer-config/features/user-init:2": {},
     "ghcr.io/devcontainer-config/features/dot-config:3": {},
     "ghcr.io/devcontainers/features/docker-in-docker:2": { "version": "27.5.1" },
-    "ghcr.io/devcontainers/features/go:1": { "version": "1.24" },
-    "ghcr.io/devcontainers/features/rust:1": { "version": "1.85" },
-    "ghcr.io/devcontainers/features/python:1": { "version": "3.13", "installTools": false }
+    "ghcr.io/devcontainers/features/go:1": { "version": "1.24" }
   },
   "customizations": {
     "vscode": {
@@ -20,6 +18,7 @@
         "esbenp.prettier-vscode",
         "ms-azuretools.vscode-docker",
         "streetsidesoftware.code-spell-checker",
+        "tamasfe.even-better-toml",
         "github.vscode-github-actions"
       ],
       "settings": {

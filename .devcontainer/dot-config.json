@@ -12,6 +12,9 @@
   "cspell": {
     "cspell.json": "cspell.json"
   },
+  "uv": {
+    "uv.toml": "/home/dev/.config/uv/uv.toml"
+  },
   "workspaces": {
     "../git/attributes": ".gitattributes",
     "../git/ignore": ".gitignore",
