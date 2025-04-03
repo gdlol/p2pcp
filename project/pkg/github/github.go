@@ -24,6 +24,15 @@ func GetDefaultBranch(ctx context.Context) string {
 	return repo.GetDefaultBranch()
 }
 
+func Push(ctx context.Context) {
+	defaultBranch := GetDefaultBranch(ctx)
+	currentBranch := workspace.GetCurrentBranch()
+	if defaultBranch == currentBranch {
+		panic("current branch is the default branch")
+	}
+	workspace.Push(ctx, currentBranch, os.Getenv("GITHUB_TOKEN"))
+}
+
 // Creates pull request from current branch to default branch
 func CreatePullRequest(ctx context.Context) {
 	client := getGitHubClient()
