@@ -30,7 +30,7 @@ func Push(ctx context.Context) {
 	if defaultBranch == currentBranch {
 		panic("current branch is the default branch")
 	}
-	workspace.Push(ctx, currentBranch, os.Getenv("GITHUB_TOKEN"))
+	workspace.GitPush(ctx, currentBranch, os.Getenv("GITHUB_TOKEN"))
 }
 
 // Creates pull request from current branch to default branch

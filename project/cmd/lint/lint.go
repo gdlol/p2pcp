@@ -6,11 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func Run() {
+	tasks.CSpell()
+	tasks.PrettierCheck()
+	tasks.GoFormatCheck()
+}
+
 var LintCmd = &cobra.Command{
 	Use: "lint",
 	Run: func(cmd *cobra.Command, args []string) {
-		tasks.CSpell()
-		tasks.PrettierCheck()
-		tasks.GoFormatCheck()
+		Run()
 	},
 }

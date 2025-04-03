@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
@@ -37,12 +38,32 @@ func GetCurrentBranch() string {
 	return head.Name().Short()
 }
 
-func Push(ctx context.Context, branch string, token string) {
+func CheckDiff() bool {
+	projectPath := GetProjectPath()
+	repo, err := git.PlainOpen(projectPath)
+	Check(err)
+	worktree, err := repo.Worktree()
+	Check(err)
+	status, err := worktree.Status()
+	Check(err)
+	if status.IsClean() {
+		return false
+	}
+	for _, file := range status {
+		if file.Worktree != git.Untracked {
+			return true
+		}
+	}
+	return false
+}
+
+func GitPush(ctx context.Context, branch string, token string) {
 	projectPath := GetProjectPath()
 	repo, err := git.PlainOpen(projectPath)
 	Check(err)
 
-	refSpec := fmt.Sprintf("+refs/heads/%s:refs/heads/%s", branch, branch)
+	branchRef := plumbing.NewBranchReferenceName(branch)
+	refSpec := fmt.Sprintf("+%s:%s", branchRef, branchRef)
 	err = repo.PushContext(ctx, &git.PushOptions{
 		RemoteName: "origin",
 		RefSpecs:   []config.RefSpec{config.RefSpec(refSpec)},

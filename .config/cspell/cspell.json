@@ -42,6 +42,7 @@
     "testdata",
     "trimpath",
     "Typeflag",
-    "workfile"
+    "workfile",
+    "worktree"
   ]
 }

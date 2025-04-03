@@ -9,6 +9,7 @@
     "go-install": "go run project install",
     "lint": "go run project lint",
     "publish": "go run project publish",
+    "renovate": "go run project renovate",
     "restore": "go run project restore",
     "sync": "go run project sync",
     "test": "go run project test",
