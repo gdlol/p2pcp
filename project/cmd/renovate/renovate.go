@@ -30,7 +30,10 @@ var RenovateCmd = &cobra.Command{
 
 			slog.Info("Committing changes...")
 			workspace.RunWithChdir(projectPath, "git", "add", ".")
-			workspace.RunWithChdir(projectPath, "git", "commit", "--message", "renovate")
+			workspace.RunWithChdir(projectPath, "git",
+				"-c", "user.name=Renovate",
+				"-c", "user.email=''",
+				"commit", "--message", "renovate")
 			slog.Info("Pushing...")
 			github.Push(cmd.Context())
 			slog.Info("Creating pull request...")
