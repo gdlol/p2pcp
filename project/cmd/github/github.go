@@ -6,6 +6,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var pushCmd = &cobra.Command{
+	Use: "push",
+	Run: func(cmd *cobra.Command, args []string) {
+		github.Push(cmd.Context())
+	},
+}
+
 var pullRequestCmd = &cobra.Command{
 	Use: "pr",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -18,5 +25,6 @@ var GithubCommand = &cobra.Command{
 }
 
 func init() {
+	GithubCommand.AddCommand(pushCmd)
 	GithubCommand.AddCommand(pullRequestCmd)
 }
