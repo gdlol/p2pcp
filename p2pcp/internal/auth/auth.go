@@ -15,7 +15,7 @@ import (
 	"moul.io/drunken-bishop/drunkenbishop"
 )
 
-const Protocol protocol.ID = "/p2pcp/auth/0.1.0"
+const Protocol protocol.ID = "/p2pcp/auth/1.0.0"
 
 const authenticationTimeout = 10 * time.Second
 
