@@ -19,4 +19,4 @@ jobs:
           cacheFrom: ghcr.io/${{ github.repository }}/devcontainer
           push: never
           runCmd: pnpm renovate
-          env: GITHUB_TOKEN=${{ github.token }}
+          env: GITHUB_TOKEN=${{ secrets.RENOVATE_TOKEN }}
