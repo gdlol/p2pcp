@@ -5,7 +5,7 @@ go 1.24.2
 require (
 	github.com/docker/docker v28.1.1+incompatible
 	github.com/libp2p/go-libp2p v0.41.1
-	github.com/libp2p/go-libp2p-kad-dht v0.32.0
+	github.com/libp2p/go-libp2p-kad-dht v0.33.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.38.0
@@ -42,10 +42,10 @@ require (
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/ipfs/boxo v0.29.1 // indirect
+	github.com/ipfs/boxo v0.30.0 // indirect
 	github.com/ipfs/go-cid v0.5.0 // indirect
 	github.com/ipfs/go-datastore v0.8.2 // indirect
-	github.com/ipfs/go-log/v2 v2.5.1 // indirect
+	github.com/ipfs/go-log/v2 v2.6.0 // indirect
 	github.com/ipld/go-ipld-prime v0.21.0 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
@@ -65,7 +65,7 @@ require (
 	github.com/libp2p/go-yamux/v5 v5.0.0 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/miekg/dns v1.1.65 // indirect
+	github.com/miekg/dns v1.1.66 // indirect
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
@@ -150,5 +150,5 @@ require (
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
-	lukechampine.com/blake3 v1.4.0 // indirect
+	lukechampine.com/blake3 v1.4.1 // indirect
 )
