@@ -3,10 +3,10 @@ module project
 go 1.24.2
 
 require (
-	github.com/go-git/go-git/v5 v5.16.1
+	github.com/go-git/go-git/v5 v5.16.2
 	github.com/google/go-github/v69 v69.2.0
 	github.com/spf13/cobra v1.9.1
-	golang.org/x/exp v0.0.0-20250606033433-dcc06ee1d476
+	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
 	golang.org/x/mod v0.25.0
 )
 
@@ -24,7 +24,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
-	github.com/onsi/gomega v1.36.2 // indirect
+	github.com/onsi/gomega v1.36.3 // indirect
 	github.com/pjbgf/sha1cd v0.3.2 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
