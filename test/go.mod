@@ -3,8 +3,8 @@ module test
 go 1.24.2
 
 require (
-	github.com/docker/docker v28.3.2+incompatible
-	github.com/libp2p/go-libp2p v0.42.0
+	github.com/docker/docker v28.3.3+incompatible
+	github.com/libp2p/go-libp2p v0.42.1
 	github.com/libp2p/go-libp2p-kad-dht v0.33.1
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
