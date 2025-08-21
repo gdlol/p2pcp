@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"test/cmd"
+
+	_ "google.golang.org/genproto/protobuf/api"
 )
 
 func main() {
