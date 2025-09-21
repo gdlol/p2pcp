@@ -9,13 +9,13 @@ import (
 )
 
 const pythonVersion = "3.12"
-const codecovVersion = "10"
+const codecovVersion = "11.2.3"
 
 var RestoreCmd = &cobra.Command{
 	Use: "restore",
 	Run: func(cmd *cobra.Command, args []string) {
 		workspace.Run("uv", "python", "install", "--preview", "--default", pythonVersion)
-		workspace.Run("uv", "tool", "install", fmt.Sprintf("codecov-cli@%s", codecovVersion))
+		workspace.Run("uv", "tool", "install", "--reinstall", fmt.Sprintf("codecov-cli@%s", codecovVersion))
 		for _, module := range workspace.GetModules() {
 			workspace.RunWithChdir(module, "go", "mod", "download")
 		}

@@ -77,3 +77,14 @@ func GitPush(ctx context.Context, branch string, token string) {
 		Check(err)
 	}
 }
+
+func GitCommitHash() string {
+	projectPath := GetProjectPath()
+	repo, err := git.PlainOpen(projectPath)
+	Check(err)
+
+	head, err := repo.Head()
+	Check(err)
+
+	return head.Hash().String()
+}
