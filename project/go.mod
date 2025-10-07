@@ -1,6 +1,6 @@
 module project
 
-go 1.24.2
+go 1.25.0
 
 require (
 	github.com/go-git/go-git/v5 v5.16.3
