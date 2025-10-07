@@ -17,8 +17,6 @@ func ComposeUp(ctx context.Context, composeFilePath string) {
 	defer func() {
 		if r := recover(); r != nil {
 			workspace.RunCtxWithChdir(ctx, composePath, "docker", "compose", "logs", "--no-color")
-			// Debugging
-			workspace.RunCtxWithChdir(ctx, composePath, "docker", "inspect", "--format='{{json .State.Health}}'", "server")
 			panic(r)
 		}
 	}()
