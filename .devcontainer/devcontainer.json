@@ -9,7 +9,7 @@
   "features": {
     "ghcr.io/devcontainer-config/features/user-init:2": {},
     "ghcr.io/devcontainer-config/features/dot-config:3": {},
-    "ghcr.io/devcontainers/features/docker-in-docker:2.12.3": { "version": "28.3.3" },
+    "ghcr.io/devcontainers/features/docker-in-docker:2.12.2": { "version": "28.3.3" },
     "ghcr.io/devcontainers/features/go:1.3.2": { "version": "1.24.2" }
   },
   "customizations": {
