@@ -11,8 +11,8 @@ services:
     healthcheck:
       test: [CMD, /test, server, ready]
       interval: 1s
-      retries: 5
-      start_period: 10s
+      retries: 3
+      start_period: 30s
       start_interval: 1s
   sender:
     container_name: sender
