@@ -1,12 +1,12 @@
 module project
 
-go 1.24.2
+go 1.25.0
 
 require (
-	github.com/go-git/go-git/v5 v5.16.2
+	github.com/go-git/go-git/v5 v5.16.3
 	github.com/google/go-github/v69 v69.2.0
 	github.com/spf13/cobra v1.10.1
-	golang.org/x/exp v0.0.0-20250911091902-df9299821621
+	golang.org/x/exp v0.0.0-20251002181428-27f1f14c8bb9
 	golang.org/x/mod v0.28.0
 )
 

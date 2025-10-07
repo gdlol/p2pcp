@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"p2pcp/pkg/config"
 
@@ -51,19 +52,11 @@ func Run(ctx context.Context) error {
 		return err
 	}
 
-	// Mark server ready.
-	ready, err := os.OpenFile("/tmp/ready", os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	ready.Close()
-
 	fmt.Println("Server is ready.")
-	<-ctx.Done()
-	return nil
-}
 
-func Ready() error {
-	_, err := os.Stat("/tmp/ready")
-	return err
+	// For health check.
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	return http.ListenAndServe(":80", nil)
 }

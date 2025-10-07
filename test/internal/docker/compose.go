@@ -13,7 +13,14 @@ import (
 )
 
 func ComposeUp(ctx context.Context, composeFilePath string) {
-	workspace.RunCtxWithChdir(ctx, filepath.Dir(composeFilePath), "docker", "compose", "up", "--detach")
+	composePath := filepath.Dir(composeFilePath)
+	defer func() {
+		if r := recover(); r != nil {
+			workspace.RunCtxWithChdir(ctx, composePath, "docker", "compose", "logs", "--no-color")
+			panic(r)
+		}
+	}()
+	workspace.RunCtxWithChdir(ctx, composePath, "docker", "compose", "up", "--detach")
 }
 
 func ComposeStop(ctx context.Context, composeFilePath string) {
