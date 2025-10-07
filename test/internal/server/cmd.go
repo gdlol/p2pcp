@@ -54,10 +54,9 @@ func Run(ctx context.Context) error {
 
 	fmt.Println("Server is ready.")
 
-	// Mark server ready.
+	// For health check.
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	http.ListenAndServe(":80", nil)
-	return nil
+	return http.ListenAndServe(":80", nil)
 }
