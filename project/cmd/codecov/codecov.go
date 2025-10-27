@@ -11,7 +11,7 @@ var CodecovCommand = &cobra.Command{
 	Use: "codecov",
 	Run: func(cmd *cobra.Command, args []string) {
 		projectPath := workspace.GetProjectPath()
-		coverageFile := filepath.Join(projectPath, "./local/coverage/coverage.txt")
+		coverageFile := filepath.Join(projectPath, ".local/coverage/coverage.txt")
 		commitHash := workspace.GitCommitHash()
 		workspace.Run("codecovcli", "--verbose", "upload-process",
 			"--commit-sha", commitHash,
