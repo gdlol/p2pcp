@@ -8,5 +8,5 @@ _*
 local.env
 
 node_modules/
-go.work.sum
+go.*work.sum
 !**/testdata/**/.*

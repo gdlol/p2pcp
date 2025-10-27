@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var vendoredGoWorkPath = filepath.Join(workspace.GetProjectPath(), "go.vendored.work")
+
 func Run() {
 	os.Setenv("CGO_ENABLED", "0")
 	projectPath := workspace.GetProjectPath()
@@ -21,6 +23,8 @@ func Run() {
 		if moduleName == project.Name {
 			output = filepath.Join(binPath, moduleName)
 		}
+		restore := workspace.SetEnv("GOWORK", vendoredGoWorkPath)
+		defer restore()
 		workspace.Run("go", "build", "-o", output, module)
 	}
 }

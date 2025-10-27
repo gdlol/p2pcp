@@ -1,0 +1,187 @@
+--- /go/pkg/mod/github.com/libp2p/go-libp2p@v0.44.0/p2p/discovery/mdns/mdns.go	2025-10-25 10:14:40.301293929 +0000
++++ /workspaces/p2pcp/.local/temp/mdns.go	2025-10-27 11:28:53.210687076 +0000
+@@ -5,6 +5,7 @@
+ 	"errors"
+ 	"io"
+ 	"math/rand"
++	"net"
+ 	"strings"
+ 	"sync"
+ 
+@@ -45,7 +46,10 @@
+ 	ctxCancel context.CancelFunc
+ 
+ 	resolverWG sync.WaitGroup
+-	server     *zeroconf.Server
++
++	// Per-interface servers map, keyed by interface IP address
++	servers    map[string]*zeroconf.Server
++	serversMux sync.RWMutex
+ 
+ 	notifee Notifee
+ }
+@@ -59,6 +63,7 @@
+ 		serviceName: serviceName,
+ 		peerName:    randomString(32 + rand.Intn(32)), // generate a random string between 32 and 63 characters long
+ 		notifee:     notifee,
++		servers:     make(map[string]*zeroconf.Server),
+ 	}
+ 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+ 	return s
+@@ -74,39 +79,40 @@
+ 
+ func (s *mdnsService) Close() error {
+ 	s.ctxCancel()
+-	if s.server != nil {
+-		s.server.Shutdown()
++
++	s.serversMux.Lock()
++	for _, server := range s.servers {
++		if server != nil {
++			server.Shutdown()
++		}
+ 	}
++	s.servers = make(map[string]*zeroconf.Server)
++	s.serversMux.Unlock()
++
+ 	s.resolverWG.Wait()
+ 	return nil
+ }
+ 
+-// We don't really care about the IP addresses, but the spec (and various routers / firewalls) require us
+-// to send A and AAAA records.
+-func (s *mdnsService) getIPs(addrs []ma.Multiaddr) ([]string, error) {
+-	var ip4, ip6 string
++func groupAddressesByIP(addrs []ma.Multiaddr) map[string][]ma.Multiaddr {
++	addrsByInterface := make(map[string][]ma.Multiaddr)
++
+ 	for _, addr := range addrs {
++		var ip string
+ 		first, _ := ma.SplitFirst(addr)
+ 		if first == nil {
+ 			continue
+ 		}
+-		if ip4 == "" && first.Protocol().Code == ma.P_IP4 {
+-			ip4 = first.Value()
+-		} else if ip6 == "" && first.Protocol().Code == ma.P_IP6 {
+-			ip6 = first.Value()
++		switch first.Protocol().Code {
++		case ma.P_IP4, ma.P_IP6:
++			ip = first.Value()
++		default:
++			continue
+ 		}
++
++		addrsByInterface[ip] = append(addrsByInterface[ip], addr)
+ 	}
+-	ips := make([]string, 0, 2)
+-	if ip4 != "" {
+-		ips = append(ips, ip4)
+-	}
+-	if ip6 != "" {
+-		ips = append(ips, ip6)
+-	}
+-	if len(ips) == 0 {
+-		return nil, errors.New("didn't find any IP addresses")
+-	}
+-	return ips, nil
++
++	return addrsByInterface
+ }
+ 
+ func (s *mdnsService) startServer() error {
+@@ -121,32 +127,73 @@
+ 	if err != nil {
+ 		return err
+ 	}
+-	var txts []string
+-	for _, addr := range addrs {
+-		if manet.IsThinWaist(addr) { // don't announce circuit addresses
+-			txts = append(txts, dnsaddrPrefix+addr.String())
+-		}
+-	}
+-
+-	ips, err := s.getIPs(addrs)
++	interfaces, err := net.Interfaces()
+ 	if err != nil {
+ 		return err
+ 	}
+ 
+-	server, err := zeroconf.RegisterProxy(
+-		s.peerName,
+-		s.serviceName,
+-		mdnsDomain,
+-		4001, // we have to pass in a port number here, but libp2p only uses the TXT records
+-		s.peerName,
+-		ips,
+-		txts,
+-		nil,
+-	)
+-	if err != nil {
+-		return err
++	addrsByIP := groupAddressesByIP(addrs)
++
++	s.serversMux.Lock()
++	defer s.serversMux.Unlock()
++	for _, iface := range interfaces {
++		if iface.Flags&(net.FlagUp|net.FlagMulticast) != (net.FlagUp | net.FlagMulticast) {
++			continue
++		}
++
++		var multiAddrs []ma.Multiaddr
++		var ips []string
++		ifaceAddrs, err := iface.Addrs()
++		if err != nil {
++			log.Debug("failed to get interface addresses", "err", err)
++			continue
++		}
++		for _, addr := range ifaceAddrs {
++			if ipNet, ok := addr.(*net.IPNet); ok {
++				ip := ipNet.IP.String()
++				if ifaceMultiAddrs, ok := addrsByIP[ip]; ok {
++					multiAddrs = append(multiAddrs, ifaceMultiAddrs...)
++					ips = append(ips, ip)
++				}
++			}
++		}
++
++		// Build TXT records for this interface
++		var txts []string
++		for _, addr := range multiAddrs {
++			if manet.IsThinWaist(addr) { // don't announce circuit addresses
++				txts = append(txts, dnsaddrPrefix+addr.String())
++			}
++		}
++
++		if len(txts) == 0 {
++			log.Warn("No valid multiaddrs to announce on interface", "interface", iface.Name)
++			continue
++		}
++
++		// Register server for this specific interface
++		server, err := zeroconf.RegisterProxy(
++			s.peerName,
++			s.serviceName,
++			mdnsDomain,
++			4001, // we have to pass in a port number here, but libp2p only uses the TXT records
++			s.peerName,
++			ips,
++			txts,
++			[]net.Interface{iface}, // Bind to specific interface
++		)
++		if err != nil {
++			log.Warn("Failed to register mDNS for interface", "interface", iface.Name, "error", err)
++			continue
++		}
++
++		s.servers[iface.Name] = server
++	}
++
++	if len(s.servers) == 0 {
++		return errors.New("failed to register mDNS on any interface")
+ 	}
+-	s.server = server
++
+ 	return nil
+ }
+ 
