@@ -11,7 +11,7 @@ import (
 )
 
 func GetReleaseArtifactsPath() string {
-	return filepath.Join(workspace.GetProjectPath(), "bin/release")
+	return filepath.Join(workspace.GetProjectPath(), ".local/bin/release")
 }
 
 func PackBinaries() {
@@ -24,7 +24,7 @@ func PackBinaries() {
 	for platform := range platformEnvs {
 		go func() {
 			defer wg.Done()
-			outputName := strings.Join([]string{project.Name, project.Version, strings.Replace(platform, "/", "_", -1)}, "_")
+			outputName := strings.Join([]string{project.Name, project.Version, strings.ReplaceAll(platform, "/", "_")}, "_")
 
 			binaryPath := filepath.Join(binariesPath, platform, project.Name)
 			if strings.HasPrefix(platform, "windows") {

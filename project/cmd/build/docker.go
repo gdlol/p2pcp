@@ -34,7 +34,7 @@ var platformEnvs = map[string]platformEnv{
 }
 
 func GetBinariesPath() string {
-	return filepath.Join(workspace.GetProjectPath(), "bin/docker")
+	return filepath.Join(workspace.GetProjectPath(), ".local/bin/docker")
 }
 
 func BuildBinaries() {

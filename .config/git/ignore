@@ -9,7 +9,4 @@ local.env
 
 node_modules/
 go.work.sum
-bin/
-logs/
-coverage/
 !**/testdata/**/.*

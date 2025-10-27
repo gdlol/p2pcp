@@ -12,7 +12,7 @@ import (
 func Run() {
 	os.Setenv("CGO_ENABLED", "0")
 	projectPath := workspace.GetProjectPath()
-	binPath := filepath.Join(projectPath, "bin")
+	binPath := filepath.Join(projectPath, ".local/bin")
 
 	// Output binaries for the main module.
 	for _, module := range workspace.GetModules() {

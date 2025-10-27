@@ -33,7 +33,7 @@ func ComposeDown(ctx context.Context, composeFilePath string) {
 }
 
 func ComposeCollectCoverage(ctx context.Context) {
-	coveragePath := filepath.Join(workspace.GetProjectPath(), "coverage/integration")
+	coveragePath := filepath.Join(workspace.GetProjectPath(), ".local/coverage/integration")
 	err := os.MkdirAll(coveragePath, 0755)
 	workspace.Check(err)
 	workspace.RunCtx(ctx, "docker", "cp", "receiver:/coverage/.", coveragePath)
@@ -44,7 +44,7 @@ func DumpComposeLogs(ctx context.Context, composeFilePath string, testName strin
 	workspace.Check(err)
 
 	composeProjectName := filepath.Base(filepath.Dir(composeFilePath))
-	logsPath := filepath.Join(workspace.GetProjectPath(), "logs", "integration", testName)
+	logsPath := filepath.Join(workspace.GetProjectPath(), ".local/logs/integration", testName)
 	workspace.ResetDir(logsPath)
 
 	filter := filters.NewArgs()
