@@ -9,7 +9,7 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.43.0
-	google.golang.org/genproto v0.0.0-20251020155222-88f65dc88635
+	google.golang.org/genproto v0.0.0-20251022142026-3a174f9686a8
 )
 
 require (
@@ -129,7 +129,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	golang.org/x/exp v0.0.0-20251017212417-90e834f514db // indirect
+	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/net v0.46.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
