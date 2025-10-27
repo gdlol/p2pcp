@@ -16,8 +16,8 @@ func Run() {
 	workspace.Run("go", "clean", "-testcache")
 
 	projectPath := workspace.GetProjectPath()
-	logsPath := filepath.Join(projectPath, "logs/integration")
-	coveragePath := filepath.Join(projectPath, "coverage")
+	logsPath := filepath.Join(projectPath, ".local/logs/integration")
+	coveragePath := filepath.Join(projectPath, ".local/coverage")
 	workspace.ResetDir(coveragePath)
 	workspace.ResetDir(logsPath)
 

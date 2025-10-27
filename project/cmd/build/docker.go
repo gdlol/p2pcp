@@ -34,13 +34,15 @@ var platformEnvs = map[string]platformEnv{
 }
 
 func GetBinariesPath() string {
-	return filepath.Join(workspace.GetProjectPath(), "bin/docker")
+	return filepath.Join(workspace.GetProjectPath(), ".local/bin/docker")
 }
 
 func BuildBinaries() {
 	slog.Info("Building multi-arch binaries...")
-	restore := workspace.SetEnv("CGO_ENABLED", "0")
-	defer restore()
+	restoreCgo := workspace.SetEnv("CGO_ENABLED", "0")
+	defer restoreCgo()
+	restoreGoWork := workspace.SetEnv("GOWORK", vendoredGoWorkPath)
+	defer restoreGoWork()
 
 	projectPath := workspace.GetProjectPath()
 	binariesPath := GetBinariesPath()

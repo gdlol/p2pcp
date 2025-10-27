@@ -1,0 +1,9 @@
+go 1.25.0
+
+use (
+	./p2pcp
+	./project
+	./test
+)
+
+replace github.com/libp2p/go-libp2p => ./.local/vendor/github.com/libp2p/go-libp2p

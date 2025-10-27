@@ -19,6 +19,7 @@ func (notifee *mdnsNotifee) HandlePeerFound(addrInfo peer.AddrInfo) {
 		slog.Debug("mdns: found new peer.", "peer", addrInfo.ID)
 		err := notifee.host.Connect(notifee.ctx, addrInfo)
 		if err == nil {
+			slog.Debug("mdns: connected to new peer.", "peer", addrInfo.ID)
 			notifee.host.ConnManager().Protect(addrInfo.ID, "mdns")
 		}
 	}

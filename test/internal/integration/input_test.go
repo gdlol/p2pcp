@@ -34,7 +34,7 @@ func runCommand(ctx context.Context, args ...string) (rm func()) {
 	func() {
 		defer func() {
 			recover()
-			coveragePath := filepath.Join(workspace.GetProjectPath(), "coverage/integration")
+			coveragePath := filepath.Join(workspace.GetProjectPath(), ".local/coverage/integration")
 			err := os.MkdirAll(coveragePath, 0755)
 			workspace.Check(err)
 			workspace.RunCtx(ctx, "docker", "cp", fmt.Sprintf("%s:/coverage/.", project.Name), coveragePath)

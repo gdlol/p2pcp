@@ -16,18 +16,13 @@ func RegisterInterruptHandler(ctx context.Context, handler func()) {
 		signal.Notify(sigChan, os.Interrupt)
 		go func() {
 			count := 0
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-sigChan:
-					count++
-					if count == 1 {
-						fmt.Println("\nCanceling...")
-						go handler()
-					} else {
-						os.Exit(1)
-					}
+			for range sigChan {
+				count++
+				if count == 1 {
+					fmt.Println("\nCanceling...")
+					go handler()
+				} else {
+					os.Exit(1)
 				}
 			}
 		}()
