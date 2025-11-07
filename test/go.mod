@@ -3,13 +3,13 @@ module test
 go 1.25.0
 
 require (
-	github.com/docker/docker v28.5.1+incompatible
-	github.com/libp2p/go-libp2p v0.44.0
+	github.com/docker/docker v28.5.2+incompatible
+	github.com/libp2p/go-libp2p v0.45.0
 	github.com/libp2p/go-libp2p-kad-dht v0.35.1
 	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.43.0
-	google.golang.org/genproto v0.0.0-20251022142026-3a174f9686a8
+	google.golang.org/genproto v0.0.0-20251103181224-f26f9409b101
 )
 
 require (

@@ -1,5 +1,5 @@
---- /go/pkg/mod/github.com/libp2p/go-libp2p@v0.44.0/p2p/discovery/mdns/mdns.go	2025-10-25 10:14:40.301293929 +0000
-+++ /workspaces/p2pcp/.local/temp/mdns.go	2025-10-27 11:28:53.210687076 +0000
+--- /go/pkg/mod/github.com/libp2p/go-libp2p@v0.44.0/p2p/discovery/mdns/mdns.go	2025-11-07 01:41:41.706923822 +0000
++++ /workspaces/p2pcp/.local/vendor/github.com/libp2p/go-libp2p/p2p/discovery/mdns/mdns.go	2025-11-07 01:48:17.527250246 +0000
 @@ -5,6 +5,7 @@
  	"errors"
  	"io"

@@ -11,7 +11,7 @@ import (
 
 func GetVendorModules() []string {
 	return []string{
-		"github.com/libp2p/go-libp2p@v0.44.0",
+		"github.com/libp2p/go-libp2p@v0.45.0",
 	}
 }
 
