@@ -3,10 +3,10 @@ module project
 go 1.25.0
 
 require (
-	github.com/go-git/go-git/v5 v5.16.3
+	github.com/go-git/go-git/v5 v5.16.4
 	github.com/google/go-github/v69 v69.2.0
-	github.com/spf13/cobra v1.10.1
-	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6
+	github.com/spf13/cobra v1.10.2
+	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39
 	golang.org/x/mod v0.30.0
 )
 
