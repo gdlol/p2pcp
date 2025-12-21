@@ -41,8 +41,8 @@ func BuildBinaries() {
 	slog.Info("Building multi-arch binaries...")
 	restoreCgo := workspace.SetEnv("CGO_ENABLED", "0")
 	defer restoreCgo()
-	restoreGoWork := workspace.SetEnv("GOWORK", vendoredGoWorkPath)
-	defer restoreGoWork()
+	// restoreGoWork := workspace.SetEnv("GOWORK", vendoredGoWorkPath)
+	// defer restoreGoWork()
 
 	projectPath := workspace.GetProjectPath()
 	binariesPath := GetBinariesPath()
