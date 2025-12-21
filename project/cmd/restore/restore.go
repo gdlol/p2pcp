@@ -39,7 +39,7 @@ var RestoreCmd = &cobra.Command{
 				"--driver-opt", "network=host")
 		}
 
-		vendor()
-		applyPatches()
+		// vendor()
+		// applyPatches()
 	},
 }
