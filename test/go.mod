@@ -9,7 +9,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.48.0
-	google.golang.org/genproto v0.0.0-20260217215200-42d3e9bedb6d
+	google.golang.org/genproto v0.0.0-20260226221140-a57be14db171
 )
 
 require (
