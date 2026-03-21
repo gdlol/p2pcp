@@ -10,16 +10,3 @@ services:
       cache_from:
         - type=registry,ref=ghcr.io/gdlol/p2pcp/devcontainer
     init: true
-    volumes:
-      - WORKSPACES:${WORKSPACES}
-      - ..:${WORKSPACES}/p2pcp
-      - XDG_CONFIG_HOME:${XDG_CONFIG_HOME}
-      - XDG_CACHE_HOME:${XDG_CACHE_HOME}
-      - XDG_DATA_HOME:${XDG_DATA_HOME}
-      - XDG_STATE_HOME:${XDG_STATE_HOME}
-volumes:
-  WORKSPACES:
-  XDG_CONFIG_HOME:
-  XDG_CACHE_HOME:
-  XDG_DATA_HOME:
-  XDG_STATE_HOME:
