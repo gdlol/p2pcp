@@ -6,11 +6,23 @@
   "remoteUser": "dev",
   "overrideCommand": true,
   "workspaceFolder": "/workspaces/p2pcp",
+  "mounts": [
+    {
+      "type": "bind",
+      "source": "${localWorkspaceFolder}",
+      "target": "/workspaces/p2pcp"
+    },
+    {
+      "type": "volume",
+      "source": "WORKSPACES",
+      "target": "/workspaces"
+    }
+  ],
   "features": {
-    "ghcr.io/devcontainer-config/features/user-init:2": {},
-    "ghcr.io/devcontainer-config/features/dot-config:3": {},
-    "ghcr.io/devcontainers/features/docker-in-docker:2.12.4": { "version": "28.3.3" },
-    "ghcr.io/devcontainers/features/go:1.3.2": { "version": "1.25.0" }
+    "ghcr.io/devcontainer-config/features/user-init:3": {},
+    "ghcr.io/devcontainer-config/features/dot-config:4": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2.16.1": { "version": "28.3.3" },
+    "ghcr.io/devcontainers/features/go:1.3.3": { "version": "1.25.7" }
   },
   "customizations": {
     "vscode": {
