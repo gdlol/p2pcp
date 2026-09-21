@@ -16,8 +16,8 @@
     "update": "go run project update"
   },
   "dependencies": {
-    "cspell": "^10.2.2",
-    "prettier": "^3.9.6",
+    "cspell": "^10.3.3",
+    "prettier": "^3.9.8",
     "prettier-plugin-packagejson": "^3.0.2",
     "prettier-plugin-toml": "^2.0.6"
   }
